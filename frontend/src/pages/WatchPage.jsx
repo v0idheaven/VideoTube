@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Avatar from "../components/Avatar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import VideoCard from "../components/VideoCard.jsx";
@@ -19,6 +19,7 @@ const ActionPill = ({ children, type = "button", ...props }) => (
 
 const WatchPage = () => {
   const { videoId } = useParams();
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [state, setState] = useState({
     loading: true,
@@ -34,6 +35,8 @@ const WatchPage = () => {
   const [togglingSubscription, setTogglingSubscription] = useState(false);
   const [activeRail, setActiveRail] = useState("All");
   const [shareMessage, setShareMessage] = useState("");
+  const [playerError, setPlayerError] = useState(false);
+  const [deletingVideo, setDeletingVideo] = useState(false);
 
   const loadVideo = async () => {
     setState((current) => ({ ...current, loading: true, error: "" }));
@@ -79,6 +82,7 @@ const WatchPage = () => {
   useEffect(() => {
     setActiveRail("All");
     setShareMessage("");
+    setPlayerError(false);
   }, [videoId]);
 
   const video = state.video;
@@ -161,10 +165,47 @@ const WatchPage = () => {
           <video
             className="max-h-[72vh] w-full bg-black"
             controls
+            onError={() => setPlayerError(true)}
             poster={thumbnail}
             src={videoSource}
           />
         </div>
+
+        {playerError ? (
+          <div className="rounded-[20px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-200">
+            Video file load nahi ho rahi. Agar original upload source unavailable ho gayi hai, record tab bhi app me rahega jab tak tum ise delete nahi karte.
+            {isOwnVideo ? (
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full bg-[#ff2d2d] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={deletingVideo}
+                  onClick={async () => {
+                    if (!window.confirm("Delete this video permanently?")) {
+                      return;
+                    }
+
+                    setDeletingVideo(true);
+
+                    try {
+                      await apiRequest(`/api/v1/videos/v/${video._id}`, {
+                        method: "DELETE",
+                      });
+                      navigate("/studio");
+                    } finally {
+                      setDeletingVideo(false);
+                    }
+                  }}
+                  type="button"
+                >
+                  {deletingVideo ? "Deleting..." : "Delete video"}
+                </button>
+                <Link className="alt-button !px-4 !py-2 text-sm" to="/studio">
+                  Back to studio
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <section className="space-y-5">
           <div>
@@ -188,10 +229,28 @@ const WatchPage = () => {
                   setTogglingLike(true);
 
                   try {
-                    await apiRequest(`/api/v1/likes/toggle/v/${video._id}`, {
+                    const response = await apiRequest(`/api/v1/likes/toggle/v/${video._id}`, {
                       method: "POST",
                     });
-                    await loadVideo();
+                    const nextLiked = Boolean(response?.data?.isLiked);
+
+                    setState((current) => {
+                      if (!current.video) {
+                        return current;
+                      }
+
+                      const wasLiked = Boolean(current.video.isLiked);
+                      const likesCount = Number(current.video.likesCount) || 0;
+
+                      return {
+                        ...current,
+                        video: {
+                          ...current.video,
+                          isLiked: nextLiked,
+                          likesCount: likesCount + (nextLiked === wasLiked ? 0 : nextLiked ? 1 : -1),
+                        },
+                      };
+                    });
                   } finally {
                     setTogglingLike(false);
                   }
@@ -280,10 +339,32 @@ const WatchPage = () => {
                     setTogglingSubscription(true);
 
                     try {
-                      await apiRequest(`/api/v1/subscriptions/c/${video.owner._id}`, {
+                      const response = await apiRequest(`/api/v1/subscriptions/c/${video.owner._id}`, {
                         method: "POST",
                       });
-                      await loadVideo();
+                      const subscribed = Boolean(response?.data?.subscribed);
+
+                      setState((current) => {
+                        if (!current.video?.owner) {
+                          return current;
+                        }
+
+                        const currentCount = Number(current.video.owner.subscribersCount) || 0;
+                        const wasSubscribed = Boolean(current.video.owner.isSubscribed);
+
+                        return {
+                          ...current,
+                          video: {
+                            ...current.video,
+                            owner: {
+                              ...current.video.owner,
+                              isSubscribed: subscribed,
+                              subscribersCount:
+                                currentCount + (subscribed === wasSubscribed ? 0 : subscribed ? 1 : -1),
+                            },
+                          },
+                        };
+                      });
                     } finally {
                       setTogglingSubscription(false);
                     }
@@ -332,12 +413,31 @@ const WatchPage = () => {
                 setSubmittingComment(true);
 
                 try {
-                  await apiRequest(`/api/v1/comments/${video._id}`, {
+                  const response = await apiRequest(`/api/v1/comments/${video._id}`, {
                     method: "POST",
                     body: { content: comment },
                   });
+                  const createdComment = response?.data;
                   setComment("");
-                  await loadVideo();
+
+                  if (createdComment) {
+                    setState((current) => ({
+                      ...current,
+                      comments: [
+                        {
+                          ...createdComment,
+                          likesCount: 0,
+                          isLiked: false,
+                          owner: {
+                            fullName: user.fullName,
+                            username: user.username,
+                            avatar: user.avatar,
+                          },
+                        },
+                        ...current.comments,
+                      ],
+                    }));
+                  }
                 } finally {
                   setSubmittingComment(false);
                 }

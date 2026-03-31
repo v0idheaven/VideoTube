@@ -16,6 +16,7 @@ const StudioHubPage = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [togglingVideoId, setTogglingVideoId] = useState("");
+  const [deletingVideoId, setDeletingVideoId] = useState("");
   const publishedVideos = useMemo(
     () => videos.filter((video) => video.isPublished),
     [videos]
@@ -274,7 +275,7 @@ const StudioHubPage = () => {
             </div>
           ) : videos.length ? (
             <div className="mt-6 overflow-hidden rounded-[24px] border border-white/10">
-              <div className="hidden grid-cols-[minmax(0,2fr),120px,120px,120px,120px] gap-4 border-b border-white/10 bg-[#111111] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/30 md:grid">
+              <div className="hidden grid-cols-[minmax(0,2fr),120px,120px,120px,180px] gap-4 border-b border-white/10 bg-[#111111] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/30 md:grid">
                 <span>Video</span>
                 <span>Status</span>
                 <span>Views</span>
@@ -288,7 +289,7 @@ const StudioHubPage = () => {
 
                   return (
                     <article
-                      className="grid gap-4 bg-[#181818] px-5 py-4 md:grid-cols-[minmax(0,2fr),120px,120px,120px,120px] md:items-center"
+                      className="grid gap-4 bg-[#181818] px-5 py-4 md:grid-cols-[minmax(0,2fr),120px,120px,120px,180px] md:items-center"
                       key={video._id}
                     >
                       <div className="flex items-center gap-4">
@@ -327,7 +328,7 @@ const StudioHubPage = () => {
                       <div className="flex flex-wrap gap-2">
                         <button
                           className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white/78 transition hover:bg-white/5"
-                          disabled={togglingVideoId === video._id}
+                          disabled={togglingVideoId === video._id || deletingVideoId === video._id}
                           onClick={async () => {
                             setTogglingVideoId(video._id);
                             setError("");
@@ -360,6 +361,35 @@ const StudioHubPage = () => {
                         <Link className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white/78 transition hover:bg-white/5" to={`/watch/${video._id}`}>
                           Open
                         </Link>
+                        <button
+                          className="rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={deletingVideoId === video._id || togglingVideoId === video._id}
+                          onClick={async () => {
+                            if (!window.confirm("Delete this video permanently?")) {
+                              return;
+                            }
+
+                            setDeletingVideoId(video._id);
+                            setError("");
+                            setMessage("");
+
+                            try {
+                              await apiRequest(`/api/v1/videos/v/${video._id}`, {
+                                method: "DELETE",
+                              });
+                              setVideos((current) => current.filter((item) => item._id !== video._id));
+                              setMessage("Video deleted successfully.");
+                              await loadStudio();
+                            } catch (requestError) {
+                              setError(requestError.message);
+                            } finally {
+                              setDeletingVideoId("");
+                            }
+                          }}
+                          type="button"
+                        >
+                          {deletingVideoId === video._id ? "Deleting..." : "Delete"}
+                        </button>
                       </div>
                     </article>
                   );
