@@ -38,6 +38,20 @@ const UploadPage = () => {
     [visibility]
   );
 
+  const ensureFileIsReadable = async (file, label) => {
+    if (!file) {
+      throw new Error(`${label} is required.`);
+    }
+
+    try {
+      await file.slice(0, 1).arrayBuffer();
+    } catch {
+      throw new Error(
+        `${label} source ab available nahi hai. Agar file temp/downloads se delete ya move ho gayi hai to usse dubara select karo.`
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="glass-panel flex items-center gap-4 p-8">
@@ -108,6 +122,9 @@ const UploadPage = () => {
               setMessage("");
 
               try {
+                await ensureFileIsReadable(videoFile, "Video file");
+                await ensureFileIsReadable(thumbnailFile, "Thumbnail file");
+
                 const formData = new FormData();
                 formData.append("title", title);
                 formData.append("description", description);
@@ -140,7 +157,13 @@ const UploadPage = () => {
                     : "Video uploaded successfully and saved as a draft."
                 );
               } catch (requestError) {
-                setError(requestError.message);
+                if (requestError?.message === "Failed to fetch") {
+                  setError(
+                    "Upload request browser se send nahi ho payi. Agar selected file temp folder se delete ya move ho gayi hai to usse dubara select karo. Agar file abhi bhi wahi hai, 20-30 seconds baad retry karo because backend cold start bhi ho sakta hai."
+                  );
+                } else {
+                  setError(requestError.message);
+                }
               } finally {
                 setSubmitting(false);
               }
@@ -171,6 +194,9 @@ const UploadPage = () => {
               </label>
               <p className="mt-4 text-sm text-white/60">
                 {videoFile ? videoFile.name : "No video selected yet"}
+              </p>
+              <p className="mt-2 text-xs text-white/38">
+                Upload complete hone tak selected source file ko move ya delete mat karo.
               </p>
             </div>
 
