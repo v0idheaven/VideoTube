@@ -173,7 +173,7 @@ const WatchPage = () => {
 
         {playerError ? (
           <div className="rounded-[18px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-200">
-            Video file load nahi ho rahi. Agar original upload source unavailable ho gayi hai, record tab bhi app me rahega jab tak tum ise delete nahi karte.
+            The video file could not be loaded. If the original uploaded source is no longer available, the record will remain in the app until you delete it.
             {isOwnVideo ? (
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
@@ -263,7 +263,7 @@ const WatchPage = () => {
                 {togglingLike
                   ? "Updating..."
                   : !user
-                    ? `Sign in · ${formatCount(video.likesCount)}`
+                    ? `Sign in - ${formatCount(video.likesCount)}`
                     : `${formatCount(video.likesCount)} ${video.isLiked ? "Liked" : "Like"}`}
               </ActionPill>
               <ActionPill
@@ -528,3 +528,4 @@ const WatchPage = () => {
 };
 
 export default WatchPage;
+

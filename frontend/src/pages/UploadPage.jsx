@@ -91,7 +91,7 @@ const UploadPage = () => {
       await file.slice(0, 1).arrayBuffer();
     } catch {
       throw new Error(
-        `${label} source ab available nahi hai. Agar file temp/downloads se delete ya move ho gayi hai to usse dubara select karo.`
+        `${label} is no longer available. If it was moved or deleted from a temp or downloads folder, please select it again.`
       );
     }
   };
@@ -211,7 +211,7 @@ const UploadPage = () => {
               } catch (requestError) {
                 if (requestError?.message === "Failed to fetch") {
                   setError(
-                    "Upload request network level par fail hui. File dubara select karke retry karo. Agar problem same rahe to Cloudinary upload ya backend signature request fail ho rahi hai."
+                    "The upload request failed at the network level. Select the file again and try once more. If the problem continues, the Cloudinary upload or backend signature request may be failing."
                   );
                 } else {
                   setError(requestError.message);
@@ -248,7 +248,7 @@ const UploadPage = () => {
                 {videoFile ? videoFile.name : "No video selected yet"}
               </p>
               <p className="mt-2 text-xs text-white/38">
-                Upload complete hone tak selected source file ko move ya delete mat karo.
+                Do not move or delete the selected source file until the upload has finished.
               </p>
             </div>
 
