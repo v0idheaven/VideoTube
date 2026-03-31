@@ -160,8 +160,8 @@ const WatchPage = () => {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),402px]">
-      <div className="space-y-5">
-        <div className="overflow-hidden rounded-[20px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
+      <div className="space-y-4">
+        <div className="overflow-hidden rounded-[18px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
           <video
             className="max-h-[72vh] w-full bg-black"
             controls
@@ -172,7 +172,7 @@ const WatchPage = () => {
         </div>
 
         {playerError ? (
-          <div className="rounded-[20px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-200">
+          <div className="rounded-[18px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-200">
             Video file load nahi ho rahi. Agar original upload source unavailable ho gayi hai, record tab bhi app me rahega jab tak tum ise delete nahi karte.
             {isOwnVideo ? (
               <div className="mt-3 flex flex-wrap gap-3">
@@ -207,16 +207,16 @@ const WatchPage = () => {
           </div>
         ) : null}
 
-        <section className="space-y-5">
+        <section className="space-y-4">
           <div>
-            <h1 className="text-[1.75rem] font-semibold leading-tight text-white md:text-[2rem]">
+            <h1 className="text-[1.5rem] font-semibold leading-tight text-white md:text-[1.75rem]">
               {video.title}
             </h1>
           </div>
 
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="text-sm text-white/45">
-              {formatCount(video.views)} views | {formatDate(video.createdAt)}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="yt-meta">
+              {formatCount(video.views)} views {formatDate(video.createdAt)}
             </div>
             <div className="flex flex-wrap gap-2">
               <ActionPill
@@ -303,7 +303,7 @@ const WatchPage = () => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 border-b border-white/10 pb-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <Link to={`/channel/${video.owner?.username}`}>
                 <Avatar className="h-12 w-12 rounded-full" name={ownerName} src={video.owner?.avatar} />
@@ -313,7 +313,7 @@ const WatchPage = () => {
                   {ownerName}
                 </Link>
                 <p className="mt-1 text-sm text-white/45">
-                  @{video.owner?.username} | {formatCount(video.owner?.subscribersCount)} subscribers
+                  @{video.owner?.username} {formatCount(video.owner?.subscribersCount)} subscribers
                 </p>
               </div>
             </div>
@@ -384,26 +384,18 @@ const WatchPage = () => {
           <div className="rounded-[18px] bg-[#272727]/70 p-4">
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-white/70">
               <span>{formatCount(video.views)} views</span>
-              <span>|</span>
               <span>{formatDate(video.createdAt)}</span>
             </div>
-            <p className="mt-4 whitespace-pre-line text-sm leading-7 text-white/65">
+            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-white/65">
               {video.description || "No description added for this video yet."}
             </p>
           </div>
         </section>
 
         <section className="space-y-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/40">
-                Comments
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-                {state.comments.length} comment{state.comments.length === 1 ? "" : "s"}
-              </h2>
-            </div>
-          </div>
+          <h2 className="text-xl font-semibold text-white">
+            {state.comments.length} comment{state.comments.length === 1 ? "" : "s"}
+          </h2>
 
           {user ? (
             <form
@@ -523,14 +515,11 @@ const WatchPage = () => {
               <VideoCard compact key={candidate._id} video={candidate} />
             ))
           ) : (
-            <EmptyState
-              description={
-                activeRail === "From this channel"
-                  ? "More uploads from this creator will appear here after they publish again."
-                  : "More recommendations will show up as the library grows."
-              }
-              title={activeRail === "From this channel" ? "No more channel videos yet" : "No recommendations yet"}
-            />
+            <div className="rounded-[18px] border border-white/10 bg-[#181818] px-5 py-6 text-sm text-white/52">
+              {activeRail === "From this channel"
+                ? "More uploads from this creator will appear here after they publish again."
+                : "More recommendations will show up as the library grows."}
+            </div>
           )}
         </div>
       </aside>

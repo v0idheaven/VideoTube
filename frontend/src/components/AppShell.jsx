@@ -335,12 +335,12 @@ const AppShell = () => {
 
     return (
       <NavLink
-        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+        className={`${
           isActive
-            ? "bg-white text-black"
+            ? "yt-nav-item yt-nav-item-active"
             : mobile
-              ? "bg-[#181818] text-white/78 hover:bg-[#272727] hover:text-white"
-              : "text-white/72 hover:bg-[#272727] hover:text-white"
+              ? "yt-nav-item bg-[#181818]"
+              : "yt-nav-item"
         }`}
         key={item.id}
         to={item.to}
@@ -355,7 +355,7 @@ const AppShell = () => {
     <div className="min-h-screen bg-[#0f0f0f] text-white">
       <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-[#0f0f0f]/95 backdrop-blur-xl">
         <div className="flex h-14 items-center gap-3 px-3 md:px-4">
-          <div className={`flex min-w-0 items-center gap-2 ${showSidebar ? "md:w-[240px]" : ""}`}>
+          <div className={`flex min-w-0 items-center gap-2 ${showSidebar ? "md:w-[224px]" : ""}`}>
             <button
               className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/72 transition hover:bg-white/5 hover:text-white"
               type="button"
@@ -363,10 +363,10 @@ const AppShell = () => {
               <Icon className="h-5 w-5" name="menu" />
             </button>
             <Link className="flex items-center gap-3 text-white" to={user ? "/feed" : "/"}>
-              <div className="grid h-8 w-11 place-items-center rounded-[10px] bg-[#ff2d2d]">
-                <Icon className="h-[18px] w-[18px] text-white" name="play" />
+              <div className="grid h-8 w-9 place-items-center rounded-[9px] bg-[#ff2d2d] shadow-[0_10px_24px_rgba(255,45,45,0.22)]">
+                <Icon className="h-[16px] w-[16px] translate-x-[1px] text-white" name="play" />
               </div>
-              <span className="text-lg font-semibold tracking-[-0.03em]">
+              <span className="text-xl font-semibold tracking-[-0.05em]">
                 Video<span className="text-[#ff2d2d]">Tube</span>
               </span>
             </Link>
@@ -455,7 +455,7 @@ const AppShell = () => {
 
       <div className={`${showSearch ? "pt-[98px] md:pt-14" : "pt-14"}`}>
         {showSidebar ? (
-          <aside className="fixed bottom-0 left-0 top-14 hidden w-[240px] overflow-y-auto border-r border-white/10 bg-[#0f0f0f] px-3 py-3 md:block">
+          <aside className="fixed bottom-0 left-0 top-14 hidden w-[224px] overflow-y-auto border-r border-white/10 bg-[#0f0f0f] px-3 py-3 md:block">
             <nav className="space-y-1">
               {primaryLinks.map((item) => renderNavigationItem(item))}
             </nav>
@@ -463,39 +463,39 @@ const AppShell = () => {
             {user ? (
               <div className="mt-3">
                 <div className="border-t border-white/10 pt-3">
-                  <p className="px-3 pb-2 text-base font-medium text-white">You</p>
+                  <p className="px-3 pb-2 text-sm font-medium text-white">You</p>
                   <div className="space-y-1">
                     {libraryLinks.map((item) => renderNavigationItem(item))}
                   </div>
                 </div>
 
                 <div className="mt-3 border-t border-white/10 pt-3">
-                  <p className="px-3 pb-2 text-base font-medium text-white">Explore</p>
+                  <p className="px-3 pb-2 text-sm font-medium text-white">Explore</p>
                   <div className="space-y-1">
                     {exploreLinks.map((item) => renderNavigationItem(item))}
                   </div>
                 </div>
 
                 <div className="mt-3 border-t border-white/10 pt-3">
-                  <p className="px-3 pb-2 text-base font-medium text-white">Studio</p>
+                  <p className="px-3 pb-2 text-sm font-medium text-white">Studio</p>
                   <div className="space-y-1">
                     {creatorLinks.map((item) => renderNavigationItem(item))}
                   </div>
                 </div>
 
                 <div className="mt-3 border-t border-white/10 pt-3">
-                  <p className="px-3 pb-2 text-base font-medium text-white">Subscriptions</p>
+                  <p className="px-3 pb-2 text-sm font-medium text-white">Subscriptions</p>
                   {subscriptionsBusy ? (
                     <div className="space-y-2 px-3 py-2">
                       {Array.from({ length: 4 }).map((_, index) => (
-                        <div className="h-10 animate-pulse rounded-2xl bg-[#181818]" key={index} />
+                        <div className="h-10 animate-pulse rounded-xl bg-[#181818]" key={index} />
                       ))}
                     </div>
                   ) : visibleSubscriptions.length ? (
                     <div className="space-y-1">
                       {visibleSubscriptions.map((channel) => (
                         <Link
-                          className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-[#272727] hover:text-white"
+                          className="yt-nav-item"
                           key={channel._id}
                           to={`/channel/${channel.username}`}
                         >
@@ -508,7 +508,7 @@ const AppShell = () => {
                         </Link>
                       ))}
                       <Link
-                        className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/55 transition hover:bg-[#272727] hover:text-white"
+                        className="yt-nav-item text-white/58"
                         to="/subscriptions"
                       >
                         <Icon className="h-[18px] w-[18px]" name="subscriptions" />
@@ -516,7 +516,7 @@ const AppShell = () => {
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-3 rounded-2xl border border-white/10 bg-[#141414] px-4 py-4 text-sm text-white/48">
+                    <div className="space-y-2 px-3 py-2 text-sm text-white/48">
                       <p>Your real subscriptions will appear here after you follow a few channels.</p>
                       <Link className="inline-flex text-sm font-medium text-white transition hover:text-white/80" to="/feed">
                         Explore channels
@@ -527,7 +527,7 @@ const AppShell = () => {
 
                 <div className="mt-3 border-t border-white/10 pt-3">
                   <button
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-white/72 transition hover:bg-[#272727] hover:text-white"
+                    className="yt-nav-item w-full text-left"
                     onClick={handleLogout}
                     type="button"
                   >
@@ -548,8 +548,8 @@ const AppShell = () => {
           </div>
         ) : null}
 
-        <main className={showSidebar ? "md:ml-[240px]" : ""}>
-          <div className={pathname.startsWith("/channel") ? "mx-auto max-w-[1500px] px-4 py-6 md:px-6 md:py-8" : isWatchPage ? "mx-auto max-w-[1760px] px-4 py-6 md:px-6 md:py-8" : "mx-auto max-w-[1800px] px-4 py-6 md:px-6 md:py-8"}>
+        <main className={showSidebar ? "md:ml-[224px]" : ""}>
+          <div className={pathname.startsWith("/channel") ? "mx-auto max-w-[1540px] px-4 py-6 md:px-6 md:py-8" : isWatchPage ? "mx-auto max-w-[1760px] px-4 py-6 md:px-6 md:py-8" : "mx-auto max-w-[1880px] px-4 py-6 md:px-6 md:py-8"}>
             <Outlet />
           </div>
         </main>

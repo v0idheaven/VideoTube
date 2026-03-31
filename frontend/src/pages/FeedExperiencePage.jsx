@@ -3,7 +3,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import EmptyState from "../components/EmptyState.jsx";
 import VideoCard from "../components/VideoCard.jsx";
 import { apiRequest } from "../lib/api.js";
-import { formatCount } from "../lib/utils.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const recommendationChips = [
@@ -145,16 +144,6 @@ const FeedExperiencePage = () => {
     return matches.length ? matches : videos;
   }, [activeChip, query, videos]);
 
-  const latestVideos = useMemo(
-    () => [...filteredVideos].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)).slice(0, 4),
-    [filteredVideos]
-  );
-
-  const popularVideos = useMemo(
-    () => [...filteredVideos].sort((left, right) => (Number(right.views) || 0) - (Number(left.views) || 0)).slice(0, 4),
-    [filteredVideos]
-  );
-
   if (authLoading) {
     return (
       <div className="yt-surface p-10 text-white">
@@ -187,36 +176,21 @@ const FeedExperiencePage = () => {
       </div>
 
       {query || activeSectionMeta ? (
-        <section className="flex flex-wrap items-end justify-between gap-4 rounded-[22px] border border-white/10 bg-[#181818] px-5 py-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
-              {query ? "Search" : activeSectionMeta.eyebrow}
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {query ? `Results for "${query}"` : activeSectionMeta.title}
-            </h1>
-            {!query ? (
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/48">{activeSectionMeta.description}</p>
-            ) : null}
-          </div>
-          <p className="text-sm text-white/42">
-            {formatCount(filteredVideos.length)} video{filteredVideos.length === 1 ? "" : "s"}
+        <section className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
+            {query ? "Search" : activeSectionMeta.eyebrow}
           </p>
+          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-white">
+            {query ? `Results for "${query}"` : activeSectionMeta.title}
+          </h1>
+          {!query ? (
+            <p className="max-w-3xl text-sm text-white/48">{activeSectionMeta.description}</p>
+          ) : null}
         </section>
-      ) : (
-        <section className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Home</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Recommended</h1>
-          </div>
-          <p className="text-sm text-white/42">
-            {formatCount(filteredVideos.length)} video{filteredVideos.length === 1 ? "" : "s"}
-          </p>
-        </section>
-      )}
+      ) : null}
 
       {loading ? (
-        <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {Array.from({ length: 8 }).map((_, index) => (
             <div className="space-y-3" key={index}>
               <div className="aspect-video animate-pulse rounded-2xl bg-[#202020]" />
@@ -241,61 +215,11 @@ const FeedExperiencePage = () => {
           title="Could not load the feed"
         />
       ) : filteredVideos.length ? (
-        <section className="space-y-8">
-          {!query && !activeSectionMeta && latestVideos.length ? (
-            <div className="space-y-5">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Latest uploads</p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">Fresh on your home feed</h2>
-                </div>
-                <p className="text-sm text-white/40">Sorted by upload time</p>
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {latestVideos.map((video) => (
-                  <VideoCard compact key={`latest-${video._id}`} video={video} />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {!query && !activeSectionMeta && popularVideos.length ? (
-            <div className="space-y-5">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Popular</p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">Most watched right now</h2>
-                </div>
-                <p className="text-sm text-white/40">Sorted by views</p>
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {popularVideos.map((video) => (
-                  <VideoCard compact key={`popular-${video._id}`} video={video} />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="space-y-5">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
-                  {query ? "Search results" : activeSectionMeta ? activeSectionMeta.eyebrow : activeChip}
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-                  {query ? `Results for "${query}"` : activeSectionMeta ? activeSectionMeta.title : "Recommended videos"}
-                </h2>
-              </div>
-              <p className="text-sm text-white/40">
-                {formatCount(filteredVideos.length)} video{filteredVideos.length === 1 ? "" : "s"}
-              </p>
-            </div>
-
-            <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {filteredVideos.map((video) => (
-                <VideoCard key={video._id} video={video} />
-              ))}
-            </div>
+        <section>
+          <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {filteredVideos.map((video) => (
+              <VideoCard key={video._id} video={video} />
+            ))}
           </div>
         </section>
       ) : (

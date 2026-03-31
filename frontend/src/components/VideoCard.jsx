@@ -24,7 +24,7 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
       <article className="group grid gap-3 sm:grid-cols-[168px,1fr]">
         <Link className="relative block aspect-video overflow-hidden rounded-xl bg-[#1b1b1b]" to={watchLink}>
           {thumbnailMarkup}
-          <span className="absolute bottom-2 right-2 rounded-md bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
+          <span className="absolute bottom-2 right-2 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
             {formatDuration(video.duration)}
           </span>
         </Link>
@@ -52,7 +52,7 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
     <article className="group">
       <Link className="relative block aspect-video overflow-hidden rounded-xl bg-[#1b1b1b]" to={watchLink}>
         {thumbnailMarkup}
-        <span className="absolute bottom-2 right-2 rounded-md bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
+        <span className="absolute bottom-2 right-2 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
           {formatDuration(video.duration)}
         </span>
       </Link>
@@ -61,17 +61,17 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
         <Link className="self-start" to={channelHref}>
           <Avatar className="h-9 w-9 rounded-full" name={owner.fullName || owner.username} src={owner.avatar} />
         </Link>
-        <div className="min-w-0 space-y-1.5">
-          <Link className="line-clamp-2 block text-[15px] font-medium leading-5 text-white" to={watchLink}>
+        <div className="min-w-0">
+          <Link className="line-clamp-2 block text-[16px] font-medium leading-6 text-white" to={watchLink}>
             {video.title}
           </Link>
-          <div className="space-y-0.5 text-sm text-white/55">
+          <div className="mt-1 space-y-0.5 text-sm text-white/55">
             {owner.username ? (
-              <Link className="inline-flex text-[13px] transition hover:text-white" to={channelHref}>
+              <Link className="inline-flex text-[14px] transition hover:text-white" to={channelHref}>
                 {owner.fullName || owner.username}
               </Link>
             ) : null}
-            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[13px] text-white/40">
+            <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[14px] leading-5 text-white/40">
               <span>{formatCount(video.views)} views</span>
               <span>{formatTimeAgo(video.createdAt)}</span>
             </div>

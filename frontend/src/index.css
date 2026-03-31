@@ -70,15 +70,15 @@ body {
 }
 
 .yt-surface {
-  @apply rounded-3xl border border-white/10 bg-[#181818];
+  @apply rounded-2xl border border-white/10 bg-[#181818];
 }
 
 .yt-panel {
-  @apply rounded-2xl border border-white/10 bg-[#121212];
+  @apply rounded-xl border border-white/10 bg-[#121212];
 }
 
 .yt-chip {
-  @apply inline-flex items-center justify-center rounded-lg bg-[#272727] px-3.5 py-2 text-sm font-medium text-white/85 transition hover:bg-[#323232];
+  @apply inline-flex items-center justify-center rounded-lg bg-[#272727] px-3 py-1.5 text-sm font-medium text-white/85 transition hover:bg-[#323232];
 }
 
 .yt-chip-active {
@@ -91,6 +91,18 @@ body {
 
 .yt-soft-button {
   @apply inline-flex items-center justify-center rounded-full bg-[#272727] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#323232];
+}
+
+.yt-nav-item {
+  @apply flex items-center gap-6 rounded-xl px-3 py-2.5 text-sm font-medium text-white/80 transition hover:bg-[#272727] hover:text-white;
+}
+
+.yt-nav-item-active {
+  @apply bg-[#272727] text-white;
+}
+
+.yt-meta {
+  @apply text-[13px] leading-5 text-white/60;
 }
 
 .landing-stage {

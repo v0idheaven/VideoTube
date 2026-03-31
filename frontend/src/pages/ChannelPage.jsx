@@ -105,9 +105,9 @@ const ChannelPage = () => {
 
   return (
     <div className="space-y-0 text-white">
-      <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[#141414]">
+      <section className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#141414]">
         <div
-          className="h-[180px] bg-cover bg-center md:h-[230px]"
+          className="h-[180px] bg-cover bg-center md:h-[220px]"
           style={{
             backgroundImage: channel.coverImage
               ? `linear-gradient(135deg, rgba(0,0,0,0.18), rgba(0,0,0,0.58)), url(${channel.coverImage})`
@@ -222,9 +222,9 @@ const ChannelPage = () => {
 
             return (
               <button
-                className={`rounded-t-2xl border-b-2 px-5 py-3 text-sm font-medium transition ${
+                className={`border-b-2 px-4 py-4 text-sm font-medium transition ${
                   isActive
-                    ? "border-white bg-white/[0.03] text-white"
+                    ? "border-white text-white"
                     : "border-transparent text-white/50 hover:text-white"
                 }`}
                 key={tab}
@@ -242,9 +242,8 @@ const ChannelPage = () => {
         {activeTab === "Home" ? (
           featuredVideo ? (
             <div className="space-y-8">
-              <article className="overflow-hidden rounded-[28px] border border-white/10 bg-[#181818]">
-                <div className="grid gap-0 xl:grid-cols-[minmax(0,1.1fr),380px]">
-                  <Link className="aspect-video bg-black xl:h-full" to={`/watch/${featuredVideo._id}`}>
+              <article className="grid gap-6 lg:grid-cols-[minmax(0,420px),minmax(0,1fr)]">
+                  <Link className="aspect-video overflow-hidden rounded-[18px] bg-black" to={`/watch/${featuredVideo._id}`}>
                     {featuredVideo.thumbnail?.url || featuredVideo.thumbnail ? (
                       <img
                         alt={featuredVideo.title}
@@ -257,41 +256,23 @@ const ChannelPage = () => {
                       </div>
                     )}
                   </Link>
-                  <div className="flex flex-col justify-between p-6 md:p-7">
+                  <div className="max-w-3xl space-y-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/35">
-                        Featured upload
-                      </p>
+                      <p className="text-sm font-medium text-white/45">For you</p>
                       <Link
-                        className="mt-3 block text-[1.8rem] font-semibold tracking-[-0.05em] text-white"
+                        className="mt-3 block text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] text-white"
                         to={`/watch/${featuredVideo._id}`}
                       >
                         {featuredVideo.title}
                       </Link>
                       <p className="mt-3 text-sm text-white/45">
-                        {formatCount(featuredVideo.views)} views | {formatTimeAgo(featuredVideo.createdAt)}
+                        {formatCount(featuredVideo.views)} views {formatTimeAgo(featuredVideo.createdAt)}
                       </p>
                       <p className="mt-4 line-clamp-4 max-w-2xl text-sm leading-7 text-white/56">
                         {featuredVideo.description || "Open the watch page to read the full description."}
                       </p>
                     </div>
-
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-white/34">Audience</p>
-                        <p className="mt-2 text-lg font-semibold text-white">
-                          {formatCount(channel.subscribersCount)} subscribers
-                        </p>
-                      </div>
-                      <div className="rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-white/34">Library</p>
-                        <p className="mt-2 text-lg font-semibold text-white">
-                          {formatCount(state.videos.length)} public uploads
-                        </p>
-                      </div>
-                    </div>
                   </div>
-                </div>
               </article>
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),320px]">
