@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
 import ApiError from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
+import { Video } from "../models/video.model.js";
 import {
   uploadOnCloudinary,
   deleteOnCloudinary,
@@ -91,12 +92,13 @@ const registerUser = asyncHandler(async (req, res) => {
     const avatar = await uploadOnCloudinary(avatarLocalPath, {
       resourceType: "image",
     });
+    const avatarImageUrl = avatar?.secure_url || avatar?.url;
 
-    if (!avatar?.url) {
+    if (!avatarImageUrl) {
       throw new ApiError(500, "Error while uploading avatar image");
     }
 
-    avatarUrl = avatar.url;
+    avatarUrl = avatarImageUrl;
   }
 
   let coverImageUrl = "";
@@ -105,12 +107,13 @@ const registerUser = asyncHandler(async (req, res) => {
     const coverImage = await uploadOnCloudinary(coverImageLocalPath, {
       resourceType: "image",
     });
+    const coverImageAssetUrl = coverImage?.secure_url || coverImage?.url;
 
-    if (!coverImage?.url) {
+    if (!coverImageAssetUrl) {
       throw new ApiError(500, "Error while uploading cover image");
     }
 
-    coverImageUrl = coverImage.url;
+    coverImageUrl = coverImageAssetUrl;
   }
 
   const user = await User.create({
@@ -295,8 +298,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required");
   }
 
-  const normalizedUsername = username.toLowerCase();
-  const normalizedEmail = email.toLowerCase();
+  const normalizedFullName = fullName.trim();
+  const normalizedUsername = username.toLowerCase().trim();
+  const normalizedEmail = email.toLowerCase().trim();
 
   const existingUser = await User.findOne({
     _id: { $ne: req.user?._id },
@@ -314,7 +318,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        fullName,
+        fullName: normalizedFullName,
         username: normalizedUsername,
         email: normalizedEmail,
       },
@@ -339,8 +343,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath, {
     resourceType: "image",
   });
+  const avatarUrl = avatar?.secure_url || avatar?.url;
 
-  if (!avatar?.url) {
+  if (!avatarUrl) {
     throw new ApiError(500, "Error while uploading avatar image");
   }
 
@@ -354,7 +359,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        avatar: avatar.url,
+        avatar: avatarUrl,
       },
     },
     {
@@ -364,7 +369,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const oldAvatarPublicId = extractPublicIdFromCloudinaryUrl(currentUser.avatar);
 
-  if (currentUser.avatar && currentUser.avatar !== avatar.url) {
+  if (currentUser.avatar && currentUser.avatar !== avatarUrl) {
     await deleteOnCloudinary(oldAvatarPublicId);
   }
 
@@ -383,8 +388,9 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   const coverImage = await uploadOnCloudinary(coverImageLocalPath, {
     resourceType: "image",
   });
+  const coverImageUrl = coverImage?.secure_url || coverImage?.url;
 
-  if (!coverImage?.url) {
+  if (!coverImageUrl) {
     throw new ApiError(500, "Error while uploading cover image");
   }
 
@@ -398,7 +404,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        coverImage: coverImage.url,
+        coverImage: coverImageUrl,
       },
     },
     {
@@ -410,7 +416,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     currentUser.coverImage
   );
 
-  if (currentUser.coverImage && currentUser.coverImage !== coverImage.url) {
+  if (currentUser.coverImage && currentUser.coverImage !== coverImageUrl) {
     await deleteOnCloudinary(oldCoverImagePublicId);
   }
 
@@ -495,56 +501,65 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
-  const users = await User.aggregate([
+  const currentUserId = new mongoose.Types.ObjectId(req.user?._id);
+  const currentUser = await User.findById(req.user?._id).select("watchHistory");
+  const historyIds = currentUser?.watchHistory || [];
+
+  if (!historyIds.length) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "Watch history fetched successfully"));
+  }
+
+  const videos = await Video.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user?._id),
+        _id: {
+          $in: historyIds,
+        },
+        $or: [{ isPublished: true }, { owner: currentUserId }],
       },
     },
     {
       $lookup: {
-        from: "videos",
-        localField: "watchHistory",
+        from: "users",
+        localField: "owner",
         foreignField: "_id",
-        as: "watchHistory",
+        as: "owner",
         pipeline: [
           {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [
-                {
-                  $project: {
-                    fullName: 1,
-                    username: 1,
-                    avatar: 1,
-                  },
-                },
-              ],
+            $project: {
+              fullName: 1,
+              username: 1,
+              avatar: 1,
             },
           },
-          {
-            $addFields: {
-                owner: {
-                    $first: "$owner"
-                }
-            }
-          }
         ],
+      },
+    },
+    {
+      $addFields: {
+        owner: {
+          $first: "$owner",
+        },
       },
     },
   ]);
 
+  const historyOrder = new Map(
+    historyIds.map((videoId, index) => [videoId.toString(), index])
+  );
+
+  videos.sort(
+    (left, right) =>
+      (historyOrder.get(left._id.toString()) ?? Number.MAX_SAFE_INTEGER) -
+      (historyOrder.get(right._id.toString()) ?? Number.MAX_SAFE_INTEGER)
+  );
+
   return res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        users[0]?.watchHistory || [],
-        "Watch history fetched successfully"
-      )
+      new ApiResponse(200, videos, "Watch history fetched successfully")
     );
 });
 

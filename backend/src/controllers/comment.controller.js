@@ -10,7 +10,9 @@ import asyncHandler from "../utils/asyncHandler.js";
 const getVideoComments = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const viewerObjectId = new mongoose.Types.ObjectId(req.user?._id);
+    const viewerObjectId = mongoose.isValidObjectId(req.user?._id)
+        ? new mongoose.Types.ObjectId(req.user._id)
+        : null;
 
     if (!mongoose.isValidObjectId(videoId)) {
         throw new ApiError(400, "Invalid videoId");
@@ -20,6 +22,10 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     if (!video) {
         throw new ApiError(404, "Video not found");
+    }
+
+    if (!video.isPublished && video.owner.toString() !== req.user?._id?.toString()) {
+        throw new ApiError(403, "You are not allowed to access comments for this video");
     }
 
     const commentsAggregate = Comment.aggregate([
@@ -61,13 +67,15 @@ const getVideoComments = asyncHandler(async (req, res) => {
                 owner: {
                     $first: "$owner"
                 },
-                isLiked: {
-                    $cond: {
-                        if: { $in: [viewerObjectId, "$likes.likedBy"] },
-                        then: true,
-                        else: false
+                isLiked: viewerObjectId
+                    ? {
+                        $cond: {
+                            if: { $in: [viewerObjectId, "$likes.likedBy"] },
+                            then: true,
+                            else: false
+                        }
                     }
-                }
+                    : false
             }
         },
         {

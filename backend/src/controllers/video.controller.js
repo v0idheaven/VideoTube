@@ -317,8 +317,18 @@ const getVideoById = asyncHandler(async (req, res) => {
     // add this video to user watch history only for authenticated viewers
     if (req.user?._id) {
         await User.findByIdAndUpdate(req.user._id, {
-            $addToSet: {
+            $pull: {
                 watchHistory: videoId
+            }
+        });
+
+        await User.findByIdAndUpdate(req.user._id, {
+            $push: {
+                watchHistory: {
+                    $each: [videoId],
+                    $position: 0,
+                    $slice: 50
+                }
             }
         });
     }
@@ -373,7 +383,9 @@ const updateVideo = asyncHandler(async (req, res) => {
         resourceType: "image"
     });
 
-    if (!thumbnail) {
+    const thumbnailUrl = thumbnail?.secure_url || thumbnail?.url;
+
+    if (!thumbnailUrl) {
         throw new ApiError(400, "thumbnail not found");
     }
 
@@ -385,7 +397,7 @@ const updateVideo = asyncHandler(async (req, res) => {
                 description,
                 thumbnail: {
                     public_id: thumbnail.public_id,
-                    url: thumbnail.url
+                    url: thumbnailUrl
                 }
             }
         },

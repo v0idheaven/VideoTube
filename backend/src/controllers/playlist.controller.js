@@ -201,6 +201,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 
 const getPlaylistById = asyncHandler(async (req, res) => {
     const { playlistId } = req.params;
+    const currentUserId = new mongoose.Types.ObjectId(req.user?._id);
 
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "Invalid PlaylistId");
@@ -210,6 +211,10 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
     if (!playlist) {
         throw new ApiError(404, "Playlist not found");
+    }
+
+    if (playlist.owner?.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not allowed to access this playlist");
     }
 
     const playlistVideos = await Playlist.aggregate([
@@ -227,7 +232,10 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                 pipeline: [
                     {
                         $match: {
-                            isPublished: true
+                            $or: [
+                                { isPublished: true },
+                                { owner: currentUserId }
+                            ]
                         }
                     }
                 ]
@@ -301,6 +309,10 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
     if (!isValidObjectId(userId)) {
         throw new ApiError(400, "Invalid userId");
+    }
+
+    if (req.user?._id.toString() !== userId) {
+        throw new ApiError(403, "You are not allowed to access these playlists");
     }
 
     const playlists = await Playlist.aggregate([

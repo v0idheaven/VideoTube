@@ -5,14 +5,19 @@ import {
     getVideoComments,
     updateComment,
 } from "../controllers/comment.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { optionalJWT, verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.use(verifyJWT, upload.none()); // Apply verifyJWT middleware to all routes in this file
+router
+    .route("/:videoId")
+    .get(optionalJWT, getVideoComments)
+    .post(verifyJWT, upload.none(), addComment);
 
-router.route("/:videoId").get(getVideoComments).post(addComment);
-router.route("/c/:commentId").delete(deleteComment).patch(updateComment);
+router
+    .route("/c/:commentId")
+    .delete(verifyJWT, deleteComment)
+    .patch(verifyJWT, upload.none(), updateComment);
 
 export default router;

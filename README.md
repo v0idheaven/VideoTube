@@ -35,24 +35,39 @@ Create `frontend/.env` from `frontend/.env.example`.
 Backend:
 
 ```powershell
-cd "D:\Backend\Chai aur Backend\Day 03\backend"
+cd "D:\VideoTube\backend"
 npm run dev
 ```
 
 Frontend:
 
 ```powershell
-cd "D:\Backend\Chai aur Backend\Day 03\frontend"
+cd "D:\VideoTube\frontend"
 npm run dev
 ```
 
-## Publish online
+## Production deploy
+
+Recommended stack:
+
+- Frontend: Vercel
+- Backend: Render
+- Database: MongoDB Atlas
+- Media: Cloudinary
 
 Because the frontend uses `HashRouter`, you do not need special SPA rewrite rules for routes like `/#/watch/:id`.
 
-### Backend deployment checklist
+### 1. Deploy the backend on Render
 
-Deploy the `backend/` folder to any Node.js host and set these environment variables:
+Use the `backend/` folder as the service root.
+
+- Runtime: `Node`
+- Root Directory: `backend`
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Health Check Path: `/api/v1/healthcheck`
+
+Set these environment variables:
 
 - `PORT`
 - `NODE_ENV=production`
@@ -66,39 +81,56 @@ Deploy the `backend/` folder to any Node.js host and set these environment varia
 - `CLOUDINARY_API_SECRET`
 - `CORS_ORIGIN`
 
-Set `CORS_ORIGIN` to a comma-separated list of allowed frontend origins, for example:
+Set `CORS_ORIGIN` to a comma-separated list of allowed frontend origins. Example:
 
 ```text
 https://your-frontend-domain.com,https://www.your-frontend-domain.com
 ```
 
-Start command:
+There is also a ready backend blueprint in `render.yaml`.
 
-```powershell
-npm start
-```
+### 2. Allow database access from MongoDB Atlas
 
-### Frontend deployment checklist
+In Atlas, add a Network Access rule so your deployed backend can connect.
 
-Build the `frontend/` folder on any static hosting platform.
+- Fastest setup: `0.0.0.0/0`
+- Better long term: restrict access to your exact deployment network
+
+### 3. Deploy the frontend on Vercel
+
+Use the `frontend/` folder as the project root.
+
+- Framework Preset: `Vite`
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
 
 Set:
 
 ```text
-VITE_API_BASE_URL=https://your-backend-domain.com
+VITE_API_BASE_URL=https://your-backend-domain.onrender.com
 ```
 
-Then build:
+### 4. Final production wiring
 
-```powershell
-cd "D:\Backend\Chai aur Backend\Day 03\frontend"
-npm run build
+After Vercel gives you the real frontend URL, go back to Render and update:
+
+```text
+CORS_ORIGIN=https://your-frontend-domain.vercel.app
 ```
 
-Deploy the generated `frontend/dist/` output.
+Then redeploy the backend.
 
-## Notes
+### Production checklist
 
-- Guest users can browse public feed, watch pages, and channel pages.
+- Guest users can browse public feed, watch pages, channel pages, and comments.
 - Signed-in users get likes, history, subscriptions, studio, settings, and uploads.
+- Production cookies require HTTPS on both frontend and backend.
 - Video uploads depend on valid Cloudinary credentials and supported video/image files.
+
+### Official docs
+
+- [Vercel Vite docs](https://vercel.com/docs/frameworks/frontend/vite)
+- [Render Node/Express docs](https://render.com/docs/deploy-node-express-app)
+- [Render Blueprint spec](https://render.com/docs/blueprint-spec)
+- [MongoDB Atlas network access docs](https://www.mongodb.com/docs/atlas/security/add-ip-address-to-list/)
