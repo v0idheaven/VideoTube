@@ -5,6 +5,50 @@ import StudioSidebar from "../components/StudioSidebar.jsx";
 import { apiRequest } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
+const readUploadPayload = async (response) => {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+};
+
+const uploadAssetDirectToCloudinary = async ({ file, resourceType, signaturePayload }) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", signaturePayload.apiKey);
+  formData.append("timestamp", String(signaturePayload.timestamp));
+  formData.append("signature", signaturePayload.signature);
+
+  if (signaturePayload.folder) {
+    formData.append("folder", signaturePayload.folder);
+  }
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/${resourceType}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const payload = await readUploadPayload(response);
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.error?.message || payload?.message || `Cloudinary ${resourceType} upload failed`
+    );
+  }
+
+  return payload;
+};
+
 const UploadPage = () => {
   const navigate = useNavigate();
   const formRef = useRef(null);
@@ -124,25 +168,33 @@ const UploadPage = () => {
               try {
                 await ensureFileIsReadable(videoFile, "Video file");
                 await ensureFileIsReadable(thumbnailFile, "Thumbnail file");
-
-                const formData = new FormData();
-                formData.append("title", title);
-                formData.append("description", description);
-                formData.append("videoFile", videoFile);
-                formData.append("thumbnail", thumbnailFile);
-
-                const response = await apiRequest("/api/v1/videos", {
+                const signatureResponse = await apiRequest("/api/v1/videos/direct-upload-signature", {
                   method: "POST",
-                  body: formData,
+                });
+                const signaturePayload = signatureResponse?.data;
+
+                const videoAsset = await uploadAssetDirectToCloudinary({
+                  file: videoFile,
+                  resourceType: "video",
+                  signaturePayload,
                 });
 
-                const createdVideo = response?.data;
+                const thumbnailAsset = await uploadAssetDirectToCloudinary({
+                  file: thumbnailFile,
+                  resourceType: "image",
+                  signaturePayload,
+                });
 
-                if (visibility === "public" && createdVideo?._id) {
-                  await apiRequest(`/api/v1/videos/toggle/publish/${createdVideo._id}`, {
-                    method: "PATCH",
-                  });
-                }
+                await apiRequest("/api/v1/videos/direct", {
+                  method: "POST",
+                  body: {
+                    title,
+                    description,
+                    visibility,
+                    videoAsset,
+                    thumbnailAsset,
+                  },
+                });
 
                 formRef.current?.reset();
                 setTitle("");
@@ -159,7 +211,7 @@ const UploadPage = () => {
               } catch (requestError) {
                 if (requestError?.message === "Failed to fetch") {
                   setError(
-                    "Upload request browser se send nahi ho payi. Agar selected file temp folder se delete ya move ho gayi hai to usse dubara select karo. Agar file abhi bhi wahi hai, 20-30 seconds baad retry karo because backend cold start bhi ho sakta hai."
+                    "Upload request network level par fail hui. File dubara select karke retry karo. Agar problem same rahe to Cloudinary upload ya backend signature request fail ho rahi hai."
                   );
                 } else {
                   setError(requestError.message);

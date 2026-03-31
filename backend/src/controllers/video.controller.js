@@ -5,7 +5,8 @@ import { User } from "../models/user.model.js";
 import { Comment } from "../models/comment.model.js";
 import {
     uploadOnCloudinary,
-    deleteOnCloudinary
+    deleteOnCloudinary,
+    buildDirectUploadSignature
 } from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import mongoose, { isValidObjectId } from "mongoose";
@@ -182,6 +183,83 @@ const publishAVideo = asyncHandler(async (req, res) => {
     return res
         .status(201)
         .json(new ApiResponse(201, video, "Video uploaded successfully"));
+});
+
+const getDirectUploadSignature = asyncHandler(async (req, res) => {
+    const folder = `videotube/${req.user?._id}`;
+    const signaturePayload = buildDirectUploadSignature({ folder });
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                signaturePayload,
+                "Direct upload signature generated successfully"
+            )
+        );
+});
+
+const createVideoFromUploadedAssets = asyncHandler(async (req, res) => {
+    const {
+        title,
+        description,
+        visibility = "private",
+        videoAsset,
+        thumbnailAsset
+    } = req.body;
+
+    if ([title, description].some((field) => !field?.trim())) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const videoUrl = videoAsset?.secure_url || videoAsset?.url;
+    const videoPublicId = videoAsset?.public_id;
+    const thumbnailUrl = thumbnailAsset?.secure_url || thumbnailAsset?.url;
+    const thumbnailPublicId = thumbnailAsset?.public_id;
+    const duration = Number(videoAsset?.duration) || 0;
+
+    if (!videoUrl || !videoPublicId || duration <= 0) {
+        throw new ApiError(400, "Uploaded video asset is invalid");
+    }
+
+    if (!thumbnailUrl || !thumbnailPublicId) {
+        throw new ApiError(400, "Uploaded thumbnail asset is invalid");
+    }
+
+    try {
+        const video = await Video.create({
+            title: title.trim(),
+            description: description.trim(),
+            duration,
+            videoFile: {
+                url: videoUrl,
+                public_id: videoPublicId
+            },
+            thumbnail: {
+                url: thumbnailUrl,
+                public_id: thumbnailPublicId
+            },
+            owner: req.user?._id,
+            isPublished: visibility === "public"
+        });
+
+        return res
+            .status(201)
+            .json(
+                new ApiResponse(
+                    201,
+                    video,
+                    visibility === "public"
+                        ? "Video uploaded and published successfully"
+                        : "Video uploaded successfully"
+                )
+            );
+    } catch (error) {
+        await deleteOnCloudinary(thumbnailPublicId);
+        await deleteOnCloudinary(videoPublicId, "video");
+        throw error;
+    }
 });
 
 // get video by id
@@ -513,6 +591,8 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 
 export {
     publishAVideo,
+    getDirectUploadSignature,
+    createVideoFromUploadedAssets,
     updateVideo,
     deleteVideo,
     getAllVideos,

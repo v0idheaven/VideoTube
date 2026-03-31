@@ -76,6 +76,32 @@ const deleteOnCloudinary = async (publicId, resourceType = "image") => {
     });
 };
 
+const buildDirectUploadSignature = ({
+    folder = ""
+} = {}) => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const paramsToSign = {
+        timestamp
+    };
+
+    if (folder) {
+        paramsToSign.folder = folder;
+    }
+
+    const signature = cloudinary.utils.api_sign_request(
+        paramsToSign,
+        process.env.CLOUDINARY_API_SECRET
+    );
+
+    return {
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+        timestamp,
+        folder,
+        signature
+    };
+};
+
 const extractPublicIdFromCloudinaryUrl = (fileUrl) => {
     if (!fileUrl) {
         return null;
@@ -107,4 +133,9 @@ const extractPublicIdFromCloudinaryUrl = (fileUrl) => {
     return [...assetParts, basename].join("/");
 };
 
-export { uploadOnCloudinary, deleteOnCloudinary, extractPublicIdFromCloudinaryUrl }
+export {
+    uploadOnCloudinary,
+    deleteOnCloudinary,
+    extractPublicIdFromCloudinaryUrl,
+    buildDirectUploadSignature
+}

@@ -7,6 +7,8 @@ import {
     getVideoById,
     updateVideo,
     publishAVideo,
+    getDirectUploadSignature,
+    createVideoFromUploadedAssets,
     togglePublishStatus
 } from "../controllers/video.controller.js";
 
@@ -31,6 +33,9 @@ router
         ]),
         publishAVideo
     );
+
+router.route("/direct-upload-signature").post(verifyJWT, getDirectUploadSignature);
+router.route("/direct").post(verifyJWT, createVideoFromUploadedAssets);
 
 router
     .route("/v/:videoId")
