@@ -15,7 +15,7 @@ Create `backend/.env` from `backend/.env.example`.
 
 Required values:
 
-- `MONGODB_URI`
+- `MONGODB_URI` using the standard Atlas URI from the dashboard
 - `ACCESS_TOKEN_SECRET`
 - `REFRESH_TOKEN_SECRET`
 - `CLOUDINARY_CLOUD_NAME`
