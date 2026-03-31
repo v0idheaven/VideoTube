@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface-soft: #121212;
+  --surface-elevated: #202020;
+  --line: rgba(255, 255, 255, 0.1);
+  --ink: #f8fafc;
+  --muted: rgba(255, 255, 255, 0.62);
+  --coral: #ff2d2d;
+  --tide: #3ea6ff;
+  --sun: #ff5a36;
+}
+
+body {
+  @apply min-h-screen bg-[var(--bg)] font-body text-[var(--ink)] antialiased;
+}
+
+#root {
+  @apply min-h-screen;
+}
+
+.glass-panel {
+  @apply rounded-[24px] border border-[var(--line)] bg-[var(--surface)] shadow-[0_24px_70px_rgba(0,0,0,0.28)];
+}
+
+.soft-panel {
+  @apply rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)];
+}
+
+.input-shell {
+  @apply w-full rounded-2xl border border-white/10 bg-[#121212] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-white/20 focus:bg-[#101010] focus:ring-2 focus:ring-white/5;
+}
+
+.input-shell:focus {
+  --tw-ring-color: rgb(255 255 255 / 0.05);
+}
+
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px #0b0b0b inset;
+  box-shadow: 0 0 0 1000px #0b0b0b inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.auth-input:-moz-autofill {
+  box-shadow: 0 0 0 1000px #0b0b0b inset;
+  -moz-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.gradient-button {
+  @apply inline-flex items-center justify-center rounded-full bg-[var(--coral)] px-5 py-3 font-medium text-white shadow-[0_10px_30px_rgba(255,45,45,0.2)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.alt-button {
+  @apply inline-flex items-center justify-center rounded-full border border-white/10 bg-[#272727] px-5 py-3 font-medium text-white transition hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.ghost-button {
+  @apply inline-flex items-center justify-center rounded-full border border-white/10 bg-transparent px-5 py-3 font-medium text-white transition hover:border-white/20 hover:bg-white/5;
+}
+
+.yt-surface {
+  @apply rounded-3xl border border-white/10 bg-[#181818];
+}
+
+.yt-panel {
+  @apply rounded-2xl border border-white/10 bg-[#121212];
+}
+
+.yt-chip {
+  @apply inline-flex items-center justify-center rounded-lg bg-[#272727] px-3.5 py-2 text-sm font-medium text-white/85 transition hover:bg-[#323232];
+}
+
+.yt-chip-active {
+  @apply bg-white text-black hover:bg-white;
+}
+
+.yt-icon-button {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#272727] text-white transition hover:bg-[#323232];
+}
+
+.yt-soft-button {
+  @apply inline-flex items-center justify-center rounded-full bg-[#272727] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#323232];
+}
+
+.landing-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(213, 151, 73, 0.3), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(27, 105, 119, 0.26), transparent 26%),
+    linear-gradient(135deg, #0f1920 0%, #17323b 46%, #215966 100%);
+  box-shadow: 0 34px 90px rgba(8, 16, 20, 0.22);
+}
+
+.landing-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+.editorial-frame {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.signal-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.75rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.landing-float {
+  animation: drift 6.5s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f0f0f;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid #0f0f0f;
+  border-radius: 9999px;
+  background: #2f2f2f;
+}
