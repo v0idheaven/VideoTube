@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Avatar from "../components/Avatar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -25,12 +25,15 @@ const WatchPage = () => {
     error: "",
     video: null,
     comments: [],
-    related: [],
+    sameChannelVideos: [],
+    recommendedVideos: [],
   });
   const [comment, setComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [togglingLike, setTogglingLike] = useState(false);
   const [togglingSubscription, setTogglingSubscription] = useState(false);
+  const [activeRail, setActiveRail] = useState("All");
+  const [shareMessage, setShareMessage] = useState("");
 
   const loadVideo = async () => {
     setState((current) => ({ ...current, loading: true, error: "" }));
@@ -38,9 +41,12 @@ const WatchPage = () => {
     try {
       const videoResponse = await apiRequest(`/api/v1/videos/v/${videoId}`);
       const video = videoResponse?.data;
-      const [commentsResult, relatedResult] = await Promise.allSettled([
+      const [commentsResult, sameChannelResult, recommendedResult] = await Promise.allSettled([
         apiRequest(`/api/v1/comments/${videoId}`),
-        apiRequest(`/api/v1/videos?userId=${video.owner?._id || ""}`, {}, { skipRefresh: true }),
+        video.owner?._id
+          ? apiRequest(`/api/v1/videos?userId=${video.owner._id}&limit=8`, {}, { skipRefresh: true })
+          : Promise.resolve({ data: { docs: [] } }),
+        apiRequest("/api/v1/videos?sortBy=views&sortType=desc&limit=12", {}, { skipRefresh: true }),
       ]);
 
       setState({
@@ -49,14 +55,10 @@ const WatchPage = () => {
         video,
         comments:
           commentsResult.status === "fulfilled" ? commentsResult.value?.data?.docs || [] : [],
-        related:
-          commentsResult.status === "rejected" && relatedResult.status === "rejected"
-            ? []
-            : (
-                relatedResult.status === "fulfilled"
-                  ? relatedResult.value?.data?.docs || []
-                  : []
-              ).filter((candidate) => candidate._id !== video._id),
+        sameChannelVideos:
+          sameChannelResult.status === "fulfilled" ? sameChannelResult.value?.data?.docs || [] : [],
+        recommendedVideos:
+          recommendedResult.status === "fulfilled" ? recommendedResult.value?.data?.docs || [] : [],
       });
     } catch (requestError) {
       setState({
@@ -64,7 +66,8 @@ const WatchPage = () => {
         error: requestError.message,
         video: null,
         comments: [],
-        related: [],
+        sameChannelVideos: [],
+        recommendedVideos: [],
       });
     }
   };
@@ -72,6 +75,41 @@ const WatchPage = () => {
   useEffect(() => {
     loadVideo();
   }, [videoId]);
+
+  useEffect(() => {
+    setActiveRail("All");
+    setShareMessage("");
+  }, [videoId]);
+
+  const video = state.video;
+  const currentVideoId = video?._id || videoId;
+  const sameChannelVideos = useMemo(
+    () => (state.sameChannelVideos || []).filter((candidate) => candidate._id !== currentVideoId),
+    [currentVideoId, state.sameChannelVideos]
+  );
+  const recommendedVideos = useMemo(() => {
+    const seen = new Set([currentVideoId, ...sameChannelVideos.map((candidate) => candidate._id)]);
+
+    return (state.recommendedVideos || []).filter((candidate) => {
+      if (seen.has(candidate._id)) {
+        return false;
+      }
+
+      seen.add(candidate._id);
+      return true;
+    });
+  }, [currentVideoId, sameChannelVideos, state.recommendedVideos]);
+  const railVideos = useMemo(() => {
+    if (activeRail === "From this channel") {
+      return sameChannelVideos;
+    }
+
+    if (activeRail === "Popular") {
+      return recommendedVideos;
+    }
+
+    return [...sameChannelVideos, ...recommendedVideos];
+  }, [activeRail, recommendedVideos, sameChannelVideos]);
 
   if (loading) {
     return (
@@ -91,7 +129,7 @@ const WatchPage = () => {
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-[#ff2d2d]" />
         <div>
           <p className="font-semibold text-white">Loading the player</p>
-          <p className="text-sm text-white/45">Pulling video details, comments, and related clips.</p>
+          <p className="text-sm text-white/45">Pulling video details, comments, and recommendations.</p>
         </div>
       </div>
     );
@@ -111,7 +149,6 @@ const WatchPage = () => {
     );
   }
 
-  const { video } = state;
   const thumbnail = video.thumbnail?.url || video.thumbnail;
   const videoSource = video.videoFile?.url || video.videoFile;
   const ownerName = video.owner?.fullName || video.owner?.username || "VideoTube creator";
@@ -170,20 +207,40 @@ const WatchPage = () => {
                     ? `Sign in · ${formatCount(video.likesCount)}`
                     : `${formatCount(video.likesCount)} ${video.isLiked ? "Liked" : "Like"}`}
               </ActionPill>
-              <ActionPill>
+              <ActionPill
+                onClick={async () => {
+                  const shareUrl = window.location.href;
+
+                  try {
+                    if (navigator.clipboard?.writeText) {
+                      await navigator.clipboard.writeText(shareUrl);
+                      setShareMessage("Link copied");
+                    } else {
+                      window.open(shareUrl, "_blank", "noopener,noreferrer");
+                      setShareMessage("Opened link");
+                    }
+                  } catch {
+                    setShareMessage("Share unavailable");
+                  }
+                }}
+              >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M4 12v7a1 1 0 0 0 1 1h14" />
                   <path d="M16 6l4 4-4 4" />
                   <path d="M20 10H9a5 5 0 0 0-5 5v0" />
                 </svg>
-                Share
+                {shareMessage || "Share"}
               </ActionPill>
-              <ActionPill>
+              <Link
+                className="inline-flex h-9 items-center gap-2 rounded-full bg-[#272727] px-4 text-sm font-medium text-white transition hover:bg-[#323232]"
+                to={`/channel/${video.owner?.username}`}
+              >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M5 3h14a1 1 0 0 1 1 1v17l-8-4-8 4V4a1 1 0 0 1 1-1z" />
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 20a7 7 0 0 1 14 0" />
                 </svg>
-                Save
-              </ActionPill>
+                Channel
+              </Link>
             </div>
           </div>
 
@@ -342,26 +399,37 @@ const WatchPage = () => {
 
       <aside className="space-y-4">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          <button className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-black" type="button">
-            All
-          </button>
-          <button className="rounded-lg bg-[#272727] px-3 py-1.5 text-sm font-medium text-white" type="button">
-            From this channel
-          </button>
-          <button className="rounded-lg bg-[#272727] px-3 py-1.5 text-sm font-medium text-white" type="button">
-            Related
-          </button>
+          {["All", "From this channel", "Popular"].map((item) => {
+            const active = activeRail === item;
+
+            return (
+              <button
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  active ? "bg-white text-black" : "bg-[#272727] text-white hover:bg-[#323232]"
+                }`}
+                key={item}
+                onClick={() => setActiveRail(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            );
+          })}
         </div>
 
         <div className="space-y-4">
-          {state.related.length ? (
-            state.related.map((candidate) => (
+          {railVideos.length ? (
+            railVideos.map((candidate) => (
               <VideoCard compact key={candidate._id} video={candidate} />
             ))
           ) : (
             <EmptyState
-              description="Upload another video from the same channel to fill this rail."
-              title="No related clips yet"
+              description={
+                activeRail === "From this channel"
+                  ? "More uploads from this creator will appear here after they publish again."
+                  : "More recommendations will show up as the library grows."
+              }
+              title={activeRail === "From this channel" ? "No more channel videos yet" : "No recommendations yet"}
             />
           )}
         </div>

@@ -22,44 +22,54 @@ const recommendationChips = [
 const sectionMeta = {
   shorts: {
     eyebrow: "Shorts",
-    title: "Short-form picks",
-    description: "A fast vertical-style mix of clips and quick creator drops from across VideoTube.",
-  },
-  subscriptions: {
-    eyebrow: "Subscriptions",
-    title: "Latest from channels you follow",
-    description: "Fresh uploads from creators you keep up with, laid out in your main home feed.",
-  },
-  history: {
-    eyebrow: "History",
-    title: "Keep watching",
-    description: "Recent-style picks so you can jump back into long-form sessions without losing momentum.",
-  },
-  playlists: {
-    eyebrow: "Playlists",
-    title: "Series and saved collections",
-    description: "Binge-friendly uploads arranged like playlist shelves while playlist pages are still being built out.",
-  },
-  liked: {
-    eyebrow: "Liked videos",
-    title: "Videos worth revisiting",
-    description: "A replay-friendly mix that feels closer to a real liked-videos shelf.",
+    title: "Short videos",
+    description: "Quick clips pulled from the shortest published uploads in the library.",
   },
   trending: {
     eyebrow: "Trending",
     title: "Trending now",
-    description: "The most clickable mix across development, creator content, and broader entertainment.",
+    description: "Videos sorted by live view counts across the published feed.",
   },
   music: {
     eyebrow: "Music",
-    title: "Music and sound-driven videos",
-    description: "A music-first shelf layered into the same YouTube-style browsing surface.",
+    title: "Music",
+    description: "Published videos matching music-related search terms from the backend feed.",
   },
   gaming: {
     eyebrow: "Gaming",
-    title: "Gaming picks",
-    description: "Streams, highlights, and creator uploads arranged as a clean gaming destination.",
+    title: "Gaming",
+    description: "Published videos matching gaming-related search terms from the backend feed.",
   },
+};
+
+const buildFeedRequest = ({ query, section }) => {
+  const params = new URLSearchParams();
+  params.set("limit", "24");
+
+  if (section === "trending") {
+    params.set("sortBy", "views");
+    params.set("sortType", "desc");
+  }
+
+  if (section === "shorts") {
+    params.set("sortBy", "duration");
+    params.set("sortType", "asc");
+  }
+
+  if (section === "music" && !query) {
+    params.set("query", "music");
+  }
+
+  if (section === "gaming" && !query) {
+    params.set("query", "gaming");
+  }
+
+  if (query) {
+    params.set("query", query);
+  }
+
+  const suffix = params.toString();
+  return suffix ? `?${suffix}` : "";
 };
 
 const FeedExperiencePage = () => {
@@ -81,11 +91,16 @@ const FeedExperiencePage = () => {
       setError("");
 
       try {
-        const suffix = query ? `?query=${encodeURIComponent(query)}` : "";
+        const suffix = buildFeedRequest({ query, section });
         const response = await apiRequest(`/api/v1/videos${suffix}`, {}, { skipRefresh: true });
+        let docs = response?.data?.docs || [];
+
+        if (section === "shorts") {
+          docs = docs.filter((video) => (Number(video.duration) || 0) <= 180);
+        }
 
         if (!cancelled) {
-          setVideos(response?.data?.docs || []);
+          setVideos(docs);
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -103,7 +118,7 @@ const FeedExperiencePage = () => {
     return () => {
       cancelled = true;
     };
-  }, [query, user]);
+  }, [query, section, user]);
 
   useEffect(() => {
     setActiveChip("All");
@@ -129,6 +144,16 @@ const FeedExperiencePage = () => {
 
     return matches.length ? matches : videos;
   }, [activeChip, query, videos]);
+
+  const latestVideos = useMemo(
+    () => [...filteredVideos].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)).slice(0, 4),
+    [filteredVideos]
+  );
+
+  const popularVideos = useMemo(
+    () => [...filteredVideos].sort((left, right) => (Number(right.views) || 0) - (Number(left.views) || 0)).slice(0, 4),
+    [filteredVideos]
+  );
 
   if (authLoading) {
     return (
@@ -216,10 +241,62 @@ const FeedExperiencePage = () => {
           title="Could not load the feed"
         />
       ) : filteredVideos.length ? (
-        <section className="grid gap-x-4 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {filteredVideos.map((video) => (
-            <VideoCard key={video._id} video={video} />
-          ))}
+        <section className="space-y-8">
+          {!query && !activeSectionMeta && latestVideos.length ? (
+            <div className="space-y-5">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Latest uploads</p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">Fresh on your home feed</h2>
+                </div>
+                <p className="text-sm text-white/40">Sorted by upload time</p>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {latestVideos.map((video) => (
+                  <VideoCard compact key={`latest-${video._id}`} video={video} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {!query && !activeSectionMeta && popularVideos.length ? (
+            <div className="space-y-5">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Popular</p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">Most watched right now</h2>
+                </div>
+                <p className="text-sm text-white/40">Sorted by views</p>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {popularVideos.map((video) => (
+                  <VideoCard compact key={`popular-${video._id}`} video={video} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-5">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
+                  {query ? "Search results" : activeSectionMeta ? activeSectionMeta.eyebrow : activeChip}
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+                  {query ? `Results for "${query}"` : activeSectionMeta ? activeSectionMeta.title : "Recommended videos"}
+                </h2>
+              </div>
+              <p className="text-sm text-white/40">
+                {formatCount(filteredVideos.length)} video{filteredVideos.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {filteredVideos.map((video) => (
+                <VideoCard key={video._id} video={video} />
+              ))}
+            </div>
+          </div>
         </section>
       ) : (
         <EmptyState

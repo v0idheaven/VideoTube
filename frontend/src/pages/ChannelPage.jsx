@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Avatar from "../components/Avatar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -54,6 +54,26 @@ const ChannelPage = () => {
     setActiveTab("Home");
   }, [username]);
 
+  const channel = state.channel;
+  const ownChannel = user?.username === channel?.username;
+  const featuredVideo = state.videos[0] || null;
+  const recentVideos = state.videos.slice(0, 8);
+  const popularVideos = useMemo(
+    () =>
+      [...state.videos]
+        .sort((left, right) => (Number(right.views) || 0) - (Number(left.views) || 0))
+        .slice(0, 4),
+    [state.videos]
+  );
+  const stats = [
+    { label: "Subscribers", value: formatCount(channel?.subscribersCount) },
+    { label: "Following", value: formatCount(channel?.channelsSubscribedToCount) },
+    { label: "Videos", value: formatCount(state.videos.length) },
+  ];
+  const strongestVideo = [...state.videos].sort(
+    (left, right) => (Number(right.views) || 0) - (Number(left.views) || 0)
+  )[0];
+
   if (loading) {
     return (
       <div className="glass-panel flex items-center gap-4 p-8">
@@ -83,19 +103,6 @@ const ChannelPage = () => {
     );
   }
 
-  const { channel } = state;
-  const ownChannel = user?.username === channel.username;
-  const featuredVideo = state.videos[0] || null;
-  const recentVideos = state.videos.slice(0, 8);
-  const stats = [
-    { label: "Subscribers", value: formatCount(channel.subscribersCount) },
-    { label: "Following", value: formatCount(channel.channelsSubscribedToCount) },
-    { label: "Videos", value: formatCount(state.videos.length) },
-  ];
-  const strongestVideo = [...state.videos].sort(
-    (left, right) => (Number(right.views) || 0) - (Number(left.views) || 0)
-  )[0];
-
   return (
     <div className="space-y-0 text-white">
       <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[#141414]">
@@ -121,17 +128,17 @@ const ChannelPage = () => {
                   <h1 className="text-[2.1rem] font-semibold tracking-[-0.05em] text-white md:text-[3rem]">
                     {channel.fullName}
                   </h1>
-                  <p className="mt-2 text-sm text-white/65">
-                    @{channel.username} | {formatCount(channel.subscribersCount)} subscribers |{" "}
-                    {formatCount(state.videos.length)} videos
-                  </p>
-                </div>
-                <p className="max-w-3xl text-sm leading-7 text-white/58">
-                  {ownChannel
-                    ? "This is your public channel surface. Publish from studio, adjust identity from settings, and use this page as your main viewer-facing profile."
-                    : "Public creator profile with subscriptions, uploads, and a cleaner watch-first layout."}
+                <p className="mt-2 text-sm text-white/65">
+                  @{channel.username} | {formatCount(channel.subscribersCount)} subscribers |{" "}
+                  {formatCount(state.videos.length)} videos
                 </p>
               </div>
+              <p className="max-w-3xl text-sm leading-7 text-white/58">
+                {ownChannel
+                    ? "This is your public channel. New uploads appear here after you publish them from Studio."
+                    : `${formatCount(channel.subscribersCount)} people are following this creator right now.`}
+              </p>
+            </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -183,20 +190,24 @@ const ChannelPage = () => {
           </div>
 
           <div className="rounded-[24px] border border-white/10 bg-[#181818] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/34">
-              Featured
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/34">Channel snapshot</p>
             <div className="mt-4 space-y-3">
               <div className="rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3">
-                <p className="text-xs text-white/38">Top performing video</p>
+                <p className="text-xs text-white/38">Top video</p>
                 <p className="mt-2 line-clamp-2 text-sm font-medium text-white">
-                  {strongestVideo?.title || "No video performance data yet"}
+                  {strongestVideo?.title || "No public uploads yet"}
                 </p>
               </div>
               <div className="rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3">
                 <p className="text-xs text-white/38">Latest upload</p>
                 <p className="mt-2 text-sm font-medium text-white">
                   {featuredVideo ? formatTimeAgo(featuredVideo.createdAt) : "No uploads yet"}
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3">
+                <p className="text-xs text-white/38">Audience</p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {formatCount(channel.subscribersCount)} subscribers
                 </p>
               </div>
             </div>
@@ -305,26 +316,40 @@ const ChannelPage = () => {
 
                 <aside className="space-y-4">
                   <div className="rounded-[24px] border border-white/10 bg-[#181818] p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/34">
-                      About the creator
-                    </p>
-                    <p className="mt-4 text-sm leading-7 text-white/56">
-                      {ownChannel
-                        ? "Your channel is positioned as a creator hub with stronger identity, clearer sections, and a better showcase for featured content."
-                        : "This creator page balances audience credibility, featured work, and quick access to the latest uploads."}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/34">About the creator</p>
+                    <div className="mt-4 space-y-3 text-sm text-white/56">
+                      <p>@{channel.username}</p>
+                      <p>{formatCount(channel.subscribersCount)} subscribers</p>
+                      <p>{formatCount(state.videos.length)} public uploads</p>
+                      <p>{featuredVideo ? `Latest upload ${formatTimeAgo(featuredVideo.createdAt)}` : "No uploads yet"}</p>
+                    </div>
                   </div>
-                  <div className="rounded-[24px] border border-white/10 bg-[#181818] p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/34">
-                      Best performing
-                    </p>
-                    <p className="mt-4 text-sm font-medium text-white">
-                      {strongestVideo?.title || "No public uploads yet"}
-                    </p>
-                    <p className="mt-2 text-xs text-white/42">
-                      {strongestVideo ? `${formatCount(strongestVideo.views)} views` : "Waiting for analytics"}
-                    </p>
-                  </div>
+                  {popularVideos.length ? (
+                    <div className="rounded-[24px] border border-white/10 bg-[#181818] p-5">
+                      <div className="flex items-end justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/34">Popular on this channel</p>
+                          <p className="mt-2 text-sm text-white/45">Sorted by live views.</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 space-y-4">
+                        {popularVideos.map((video) => (
+                          <VideoCard
+                            compact
+                            key={`popular-${video._id}`}
+                            video={{
+                              ...video,
+                              ownerDetails: {
+                                username: channel.username,
+                                fullName: channel.fullName,
+                                avatar: channel.avatar,
+                              },
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </aside>
               </div>
             </div>
@@ -367,8 +392,8 @@ const ChannelPage = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/35">About</p>
               <p className="mt-5 max-w-3xl text-sm leading-8 text-white/58">
                 {ownChannel
-                  ? "This is your public channel page. Use studio to upload and publish new work, then come back here to see how it looks to subscribers."
-                  : "This creator page is powered by the same user and video endpoints used across the app, including subscriptions and public uploads."}
+                  ? "This page is what viewers see after you publish from Studio."
+                  : "This public channel shows the creator profile, audience counts, and latest published videos."}
               </p>
               <div className="mt-6 space-y-3 text-sm text-white/52">
                 <p>Latest activity: {featuredVideo ? formatTimeAgo(featuredVideo.createdAt) : "No uploads yet"}.</p>

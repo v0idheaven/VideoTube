@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Avatar from "./Avatar.jsx";
+import { apiRequest } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const Icon = ({ name, className = "h-5 w-5" }) => {
@@ -198,6 +199,8 @@ const AppShell = () => {
   const query = params.get("q") || "";
   const section = params.get("section") || "";
   const [searchValue, setSearchValue] = useState(query);
+  const [subscriptionChannels, setSubscriptionChannels] = useState([]);
+  const [subscriptionsBusy, setSubscriptionsBusy] = useState(false);
 
   const isStudioArea = pathname.startsWith("/studio") || pathname.startsWith("/upload");
   const isWatchPage = pathname.startsWith("/watch");
@@ -207,6 +210,45 @@ const AppShell = () => {
   useEffect(() => {
     setSearchValue(query);
   }, [query]);
+
+  useEffect(() => {
+    if (!user?._id) {
+      setSubscriptionChannels([]);
+      setSubscriptionsBusy(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSubscriptions = async () => {
+      setSubscriptionsBusy(true);
+
+      try {
+        const response = await apiRequest(`/api/v1/subscriptions/u/${user._id}`);
+        const channels = (response?.data || [])
+          .map((item) => item.subscribedChannel)
+          .filter(Boolean);
+
+        if (!cancelled) {
+          setSubscriptionChannels(channels);
+        }
+      } catch {
+        if (!cancelled) {
+          setSubscriptionChannels([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSubscriptionsBusy(false);
+        }
+      }
+    };
+
+    loadSubscriptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?._id]);
 
   const primaryLinks = useMemo(
     () => [
@@ -266,14 +308,9 @@ const AppShell = () => {
     []
   );
 
-  const subscriptions = useMemo(
-    () => [
-      { id: "self", label: user?.fullName || "Your channel", avatar: user?.avatar, initials: user?.fullName?.slice(0, 1) || "Y" },
-      { id: "kc", label: "Karan Codes", color: "bg-[#2563eb]", initials: "KC" },
-      { id: "sk", label: "Shweta K", color: "bg-[#7c3aed]", initials: "SK" },
-      { id: "at", label: "Arjun Tech", color: "bg-[#16a34a]", initials: "AT" },
-    ],
-    [user]
+  const visibleSubscriptions = useMemo(
+    () => subscriptionChannels.slice(0, 7),
+    [subscriptionChannels]
   );
 
   const handleSearch = (event) => {
@@ -448,24 +485,44 @@ const AppShell = () => {
 
                 <div className="mt-3 border-t border-white/10 pt-3">
                   <p className="px-3 pb-2 text-base font-medium text-white">Subscriptions</p>
-                  <div className="space-y-1">
-                    {subscriptions.map((item) => (
+                  {subscriptionsBusy ? (
+                    <div className="space-y-2 px-3 py-2">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <div className="h-10 animate-pulse rounded-2xl bg-[#181818]" key={index} />
+                      ))}
+                    </div>
+                  ) : visibleSubscriptions.length ? (
+                    <div className="space-y-1">
+                      {visibleSubscriptions.map((channel) => (
+                        <Link
+                          className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-[#272727] hover:text-white"
+                          key={channel._id}
+                          to={`/channel/${channel.username}`}
+                        >
+                          <Avatar
+                            className="h-6 w-6 rounded-full"
+                            name={channel.fullName || channel.username}
+                            src={channel.avatar}
+                          />
+                          <span className="truncate">{channel.fullName || channel.username}</span>
+                        </Link>
+                      ))}
                       <Link
-                        className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-[#272727] hover:text-white"
-                        key={item.id}
-                        to={item.id === "self" ? `/channel/${user.username}` : "/feed?section=subscriptions"}
+                        className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/55 transition hover:bg-[#272727] hover:text-white"
+                        to="/subscriptions"
                       >
-                        {item.avatar ? (
-                          <Avatar className="h-6 w-6 rounded-full" name={item.label} src={item.avatar} />
-                        ) : (
-                          <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ${item.color}`}>
-                            {item.initials}
-                          </span>
-                        )}
-                        <span className="truncate">{item.label}</span>
+                        <Icon className="h-[18px] w-[18px]" name="subscriptions" />
+                        <span>See all subscriptions</span>
                       </Link>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 rounded-2xl border border-white/10 bg-[#141414] px-4 py-4 text-sm text-white/48">
+                      <p>Your real subscriptions will appear here after you follow a few channels.</p>
+                      <Link className="inline-flex text-sm font-medium text-white transition hover:text-white/80" to="/feed">
+                        Explore channels
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-3 border-t border-white/10 pt-3">
