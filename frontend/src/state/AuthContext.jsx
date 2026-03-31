@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, clearAuthTokens, setAuthTokens } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
       setUser(response?.data || null);
       return response?.data || null;
     } catch {
+      clearAuthTokens();
       setUser(null);
       return null;
     } finally {
@@ -30,15 +31,23 @@ export const AuthProvider = ({ children }) => {
       body: payload,
     });
 
+    setAuthTokens({
+      accessToken: response?.data?.accessToken,
+      refreshToken: response?.data?.refreshToken,
+    });
     setUser(response?.data?.user || null);
     return response;
   };
 
   const logout = async () => {
-    await apiRequest("/api/v1/users/logout", {
-      method: "POST",
-    });
-    setUser(null);
+    try {
+      await apiRequest("/api/v1/users/logout", {
+        method: "POST",
+      });
+    } finally {
+      clearAuthTokens();
+      setUser(null);
+    }
   };
 
   const register = async (formData) => {
