@@ -52,14 +52,15 @@ const icons = {
   ),
 };
 
+// Items that stay within /studio use ?view= param; others navigate away
 const ITEMS = [
   { id: "dashboard", label: "Dashboard", to: "/studio", icon: "dashboard" },
-  { id: "content", label: "Content", to: "/studio", icon: "content" },
-  { id: "analytics", label: "Analytics", to: "/studio", icon: "analytics" },
-  { id: "comments", label: "Comments", to: "/studio", icon: "comments" },
-  { id: "subtitles", label: "Subtitles", to: "/studio", icon: "subtitles" },
+  { id: "content", label: "Content", to: "/studio?view=content", icon: "content" },
+  { id: "analytics", label: "Analytics", to: "/studio?view=analytics", icon: "analytics" },
+  { id: "comments", label: "Comments", to: "/studio?view=comments", icon: "comments" },
+  { id: "subtitles", label: "Subtitles", to: "/studio?view=content", icon: "subtitles" },
   { id: "customization", label: "Customization", to: "/settings", icon: "customization" },
-  { id: "audio", label: "Audio Library", to: "/studio", icon: "audio" },
+  { id: "audio", label: "Audio Library", to: "/studio?view=analytics", icon: "audio" },
   { id: "upload", label: "Upload", to: "/upload", icon: "upload" },
   { id: "settings", label: "Settings", to: "/settings", icon: "settings" },
 ];
