@@ -58,9 +58,9 @@ const ITEMS = [
   { id: "content", label: "Content", to: "/studio?view=content", icon: "content" },
   { id: "analytics", label: "Analytics", to: "/studio?view=analytics", icon: "analytics" },
   { id: "comments", label: "Comments", to: "/studio?view=comments", icon: "comments" },
-  { id: "subtitles", label: "Subtitles", to: "/studio?view=content", icon: "subtitles" },
+  { id: "subtitles", label: "Subtitles", to: "/studio?view=subtitles", icon: "subtitles" },
   { id: "customization", label: "Customization", to: "/settings", icon: "customization" },
-  { id: "audio", label: "Audio Library", to: "/studio?view=analytics", icon: "audio" },
+  { id: "audio", label: "Audio Library", to: "/studio?view=audio", icon: "audio" },
   { id: "upload", label: "Upload", to: "/upload", icon: "upload" },
   { id: "settings", label: "Settings", to: "/settings", icon: "settings" },
 ];

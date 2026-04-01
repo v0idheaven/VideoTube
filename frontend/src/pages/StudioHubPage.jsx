@@ -493,6 +493,242 @@ const CommentsView = ({ videos, busy }) => {
   );
 };
 
+/* ── Subtitles view ── */
+const SubtitlesView = ({ videos, busy }) => {
+  const [selectedVideoId, setSelectedVideoId] = useState(null);
+
+  useEffect(() => {
+    if (videos.length && !selectedVideoId) setSelectedVideoId(videos[0]?._id || null);
+  }, [videos]);
+
+  const selectedVideo = videos.find((v) => v._id === selectedVideoId) || null;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-[#f1f1f1]">Subtitles</h1>
+        <p className="mt-1 text-sm text-[#aaaaaa]">Add or manage subtitles and closed captions for your videos.</p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[280px,minmax(0,1fr)]">
+        {/* Video selector */}
+        <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#aaaaaa]">Select video</p>
+          {busy ? (
+            <div className="space-y-2">{[1,2,3].map((i) => <div className="h-10 animate-pulse rounded-lg bg-[#272727]" key={i} />)}</div>
+          ) : videos.length ? (
+            <div className="max-h-[400px] space-y-1 overflow-y-auto">
+              {videos.map((video) => {
+                const thumb = video.thumbnail?.url || video.thumbnail;
+                return (
+                  <button
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition ${selectedVideoId === video._id ? "bg-[#272727]" : "hover:bg-[#272727]"}`}
+                    key={video._id}
+                    onClick={() => setSelectedVideoId(video._id)}
+                    type="button"
+                  >
+                    <div className="h-9 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-[#3f3f3f]">
+                      {thumb ? <img alt={video.title} className="h-full w-full object-cover" src={thumb} /> : null}
+                    </div>
+                    <p className="line-clamp-2 text-xs text-[#f1f1f1]">{video.title}</p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-[#aaaaaa]">No videos yet.</p>
+          )}
+        </div>
+
+        {/* Subtitles panel */}
+        <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-5">
+          {selectedVideo ? (
+            <div className="space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-[#272727]">
+                  {selectedVideo.thumbnail?.url ? (
+                    <img alt={selectedVideo.title} className="h-full w-full object-cover" src={selectedVideo.thumbnail.url} />
+                  ) : null}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[#f1f1f1]">{selectedVideo.title}</p>
+                  <p className="mt-0.5 text-xs text-[#aaaaaa]">{formatTimeAgo(selectedVideo.createdAt)}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-[rgba(255,255,255,0.1)] pt-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-medium text-[#f1f1f1]">Subtitles / CC</h2>
+                  <button
+                    className="flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.2)] px-3 py-1.5 text-xs text-[#f1f1f1] hover:bg-[#272727]"
+                    type="button"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add language
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#272727]">
+                  <div className="grid grid-cols-[1fr,120px,120px] gap-4 border-b border-[rgba(255,255,255,0.1)] px-4 py-3 text-xs font-medium uppercase tracking-wide text-[#aaaaaa]">
+                    <span>Language</span>
+                    <span>Title</span>
+                    <span>Status</span>
+                  </div>
+                  <div className="px-4 py-8 text-center">
+                    <svg className="mx-auto h-10 w-10 text-[#3f3f3f]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M7 15h4M7 11h10" />
+                    </svg>
+                    <p className="mt-3 text-sm text-[#aaaaaa]">No subtitles added yet.</p>
+                    <p className="mt-1 text-xs text-[#aaaaaa]">Add subtitles to make your video accessible to more viewers.</p>
+                    <button
+                      className="mt-4 rounded-full bg-[#3ea6ff] px-4 py-2 text-sm font-medium text-black hover:bg-[#5bb8ff]"
+                      type="button"
+                    >
+                      Add subtitles
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-40 items-center justify-center">
+              <p className="text-sm text-[#aaaaaa]">Select a video to manage its subtitles.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Audio Library view ── */
+const AUDIO_TRACKS = [
+  { id: 1, title: "Acoustic Breeze", artist: "Benjamin Tissot", genre: "Acoustic", duration: "2:23", mood: "Happy" },
+  { id: 2, title: "Better Days", artist: "Bensound", genre: "Cinematic", duration: "2:33", mood: "Inspirational" },
+  { id: 3, title: "Creative Minds", artist: "Benjamin Tissot", genre: "Jazz", duration: "2:12", mood: "Calm" },
+  { id: 4, title: "Cute", artist: "Bensound", genre: "Acoustic", duration: "2:42", mood: "Happy" },
+  { id: 5, title: "Dreams", artist: "Bensound", genre: "Cinematic", duration: "3:14", mood: "Inspirational" },
+  { id: 6, title: "Enigmatic", artist: "Benjamin Tissot", genre: "Electronic", duration: "2:18", mood: "Dark" },
+  { id: 7, title: "Funny Song", artist: "Bensound", genre: "Acoustic", duration: "1:42", mood: "Funny" },
+  { id: 8, title: "Happiness", artist: "Benjamin Tissot", genre: "Acoustic", duration: "2:05", mood: "Happy" },
+  { id: 9, title: "Hey!", artist: "Bensound", genre: "Pop", duration: "2:38", mood: "Energetic" },
+  { id: 10, title: "Jazzy Frenchy", artist: "Benjamin Tissot", genre: "Jazz", duration: "1:58", mood: "Calm" },
+  { id: 11, title: "Little Idea", artist: "Bensound", genre: "Acoustic", duration: "1:32", mood: "Happy" },
+  { id: 12, title: "Memories", artist: "Benjamin Tissot", genre: "Cinematic", duration: "3:02", mood: "Sad" },
+];
+
+const AudioLibraryView = () => {
+  const [search, setSearch] = useState("");
+  const [activeGenre, setActiveGenre] = useState("All");
+  const [playing, setPlaying] = useState(null);
+
+  const genres = ["All", "Acoustic", "Cinematic", "Jazz", "Electronic", "Pop"];
+
+  const filtered = AUDIO_TRACKS.filter((t) => {
+    const matchesGenre = activeGenre === "All" || t.genre === activeGenre;
+    const matchesSearch = !search.trim() || t.title.toLowerCase().includes(search.toLowerCase()) || t.artist.toLowerCase().includes(search.toLowerCase());
+    return matchesGenre && matchesSearch;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-[#f1f1f1]">Audio Library</h1>
+        <p className="mt-1 text-sm text-[#aaaaaa]">Free music and sound effects for your videos.</p>
+      </div>
+
+      {/* Search + filter */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 overflow-hidden rounded-full border border-[rgba(255,255,255,0.1)] bg-[#212121]">
+          <div className="flex items-center pl-4 text-[#aaaaaa]">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+            </svg>
+          </div>
+          <input
+            className="w-full bg-transparent px-3 py-2.5 text-sm text-[#f1f1f1] outline-none placeholder:text-[#aaaaaa]"
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title or artist"
+            value={search}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {genres.map((g) => (
+            <button
+              className={`yt-chip flex-shrink-0 ${activeGenre === g ? "yt-chip-active" : ""}`}
+              key={g}
+              onClick={() => setActiveGenre(g)}
+              type="button"
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Track list */}
+      <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121]">
+        <div className="hidden grid-cols-[40px,minmax(0,1fr),140px,100px,80px,80px] gap-4 border-b border-[rgba(255,255,255,0.1)] px-4 py-3 text-xs font-medium uppercase tracking-wide text-[#aaaaaa] sm:grid">
+          <span />
+          <span>Track</span>
+          <span>Artist</span>
+          <span>Genre</span>
+          <span>Duration</span>
+          <span>Mood</span>
+        </div>
+
+        {filtered.length ? (
+          <div className="divide-y divide-[rgba(255,255,255,0.1)]">
+            {filtered.map((track) => {
+              const isPlaying = playing === track.id;
+              return (
+                <div
+                  className="grid grid-cols-[40px,minmax(0,1fr)] gap-4 px-4 py-3 hover:bg-[#272727] sm:grid-cols-[40px,minmax(0,1fr),140px,100px,80px,80px] sm:items-center"
+                  key={track.id}
+                >
+                  <button
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3f3f3f] text-[#f1f1f1] hover:bg-[#3ea6ff] hover:text-black transition"
+                    onClick={() => setPlaying(isPlaying ? null : track.id)}
+                    type="button"
+                  >
+                    {isPlaying ? (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </button>
+                  <div className="min-w-0">
+                    <p className={`truncate text-sm font-medium ${isPlaying ? "text-[#3ea6ff]" : "text-[#f1f1f1]"}`}>{track.title}</p>
+                    <p className="truncate text-xs text-[#aaaaaa] sm:hidden">{track.artist} · {track.genre} · {track.duration}</p>
+                  </div>
+                  <p className="hidden truncate text-sm text-[#aaaaaa] sm:block">{track.artist}</p>
+                  <p className="hidden text-sm text-[#aaaaaa] sm:block">{track.genre}</p>
+                  <p className="hidden text-sm text-[#aaaaaa] sm:block">{track.duration}</p>
+                  <p className="hidden text-sm text-[#aaaaaa] sm:block">{track.mood}</p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-4 py-12 text-center">
+            <p className="text-sm text-[#aaaaaa]">No tracks match your search.</p>
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-[#aaaaaa]">
+        All tracks are royalty-free and can be used in your VideoTube videos without copyright claims.
+      </p>
+    </div>
+  );
+};
+
 /* ── Main StudioHubPage ── */
 const StudioHubPage = () => {
   const { user, loading } = useAuth();
@@ -530,7 +766,7 @@ const StudioHubPage = () => {
     return <AuthGate description="Sign in to access YouTube Studio." title="Sign in to use Studio" />;
   }
 
-  const activeMap = { dashboard: "dashboard", content: "content", analytics: "analytics", comments: "comments" };
+  const activeMap = { dashboard: "dashboard", content: "content", analytics: "analytics", comments: "comments", subtitles: "subtitles", audio: "audio" };
   const active = activeMap[view] || "dashboard";
 
   return (
@@ -541,6 +777,8 @@ const StudioHubPage = () => {
         {view === "content" && <ContentView videos={videos} busy={busy} loadStudio={loadStudio} />}
         {view === "analytics" && <AnalyticsView stats={stats} videos={videos} busy={busy} />}
         {view === "comments" && <CommentsView videos={videos} busy={busy} />}
+        {view === "subtitles" && <SubtitlesView videos={videos} busy={busy} />}
+        {view === "audio" && <AudioLibraryView />}
       </div>
     </div>
   );
