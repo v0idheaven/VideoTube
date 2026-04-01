@@ -29,13 +29,18 @@ const SubscriptionsPage = () => {
 
   const channelsWithVideos = useMemo(() => channels.filter((c) => c.latestVideo), [channels]);
 
-  // Flatten all latest videos for the "Latest" tab
-  const latestVideos = useMemo(() => {
+  const allVideos = useMemo(() => {
     return channelsWithVideos.map((ch) => ({
       ...ch.latestVideo,
       ownerDetails: { username: ch.username, fullName: ch.fullName, avatar: ch.avatar },
     })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [channelsWithVideos]);
+
+  const todayVideos = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return allVideos.filter((v) => new Date(v.createdAt) >= today);
+  }, [allVideos]);
 
   if (loading) {
     return (
@@ -82,26 +87,28 @@ const SubscriptionsPage = () => {
     );
   }
 
+  const displayVideos = activeTab === "today" ? todayVideos : allVideos;
+
   return (
-    <div className="space-y-6 text-[#f1f1f1]">
+    <div className="space-y-4 text-[#f1f1f1]">
       {/* Channel avatars row */}
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+      <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2 pt-1">
         {channels.map((ch) => (
-          <Link className="flex flex-shrink-0 flex-col items-center gap-2" key={ch._id} to={`/channel/${ch.username}`}>
+          <Link className="flex flex-shrink-0 flex-col items-center gap-1.5" key={ch._id} to={`/channel/${ch.username}`}>
             <div className="relative">
-              <Avatar className="h-14 w-14 rounded-full" name={ch.fullName || ch.username} src={ch.avatar} />
+              <Avatar className="h-12 w-12 rounded-full" name={ch.fullName || ch.username} src={ch.avatar} />
               {ch.latestVideo && (
                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0f0f0f] bg-[#ff0000]" />
               )}
             </div>
-            <span className="max-w-[60px] truncate text-center text-xs text-[#aaaaaa]">{ch.fullName || ch.username}</span>
+            <span className="max-w-[56px] truncate text-center text-[11px] text-[#aaaaaa]">{ch.fullName || ch.username}</span>
           </Link>
         ))}
       </div>
 
       {/* Tabs */}
       <div className="border-b border-[rgba(255,255,255,0.1)]">
-        <div className="flex gap-0">
+        <div className="flex">
           {[
             { id: "all", label: "All" },
             { id: "today", label: "Today" },
@@ -121,10 +128,10 @@ const SubscriptionsPage = () => {
 
       {/* Content */}
       {activeTab === "channels" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {channels.map((ch) => (
             <Link
-              className="flex items-center gap-3 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4 hover:bg-[#272727]"
+              className="flex items-center gap-4 rounded-xl px-4 py-3 hover:bg-[#272727]"
               key={ch._id}
               to={`/channel/${ch.username}`}
             >
@@ -136,14 +143,17 @@ const SubscriptionsPage = () => {
             </Link>
           ))}
         </div>
-      ) : latestVideos.length ? (
+      ) : displayVideos.length ? (
         <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {latestVideos.map((video) => (
+          {displayVideos.map((video) => (
             <VideoCard key={video._id} video={video} />
           ))}
         </div>
       ) : (
-        <EmptyState description="No recent uploads from your subscriptions." title="Nothing new" />
+        <EmptyState
+          description={activeTab === "today" ? "No new uploads from your subscriptions today." : "No recent uploads from your subscriptions."}
+          title="Nothing new"
+        />
       )}
     </div>
   );

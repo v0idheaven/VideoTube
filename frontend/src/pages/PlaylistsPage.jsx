@@ -6,6 +6,42 @@ import { apiRequest } from "../lib/api.js";
 import { formatCount, formatTimeAgo } from "../lib/utils.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
+/* Playlist thumbnail mosaic — shows up to 4 small thumbnails */
+const PlaylistThumbnail = ({ playlist }) => {
+  const thumbs = (playlist.videos || [])
+    .map((v) => v?.thumbnail?.url || v?.thumbnail)
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (thumbs.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[#272727]">
+        <svg className="h-10 w-10 text-[#aaaaaa]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (thumbs.length === 1) {
+    return <img alt="playlist" className="h-full w-full object-cover" src={thumbs[0]} />;
+  }
+
+  return (
+    <div className="grid h-full grid-cols-2 gap-0.5">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div className="overflow-hidden bg-[#3f3f3f]" key={i}>
+          {thumbs[i] ? (
+            <img alt="" className="h-full w-full object-cover" src={thumbs[i]} />
+          ) : (
+            <div className="h-full bg-[#272727]" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const PlaylistsPage = () => {
   const { user, loading } = useAuth();
   const [playlists, setPlaylists] = useState([]);
@@ -48,11 +84,7 @@ const PlaylistsPage = () => {
     <div className="space-y-6 text-[#f1f1f1]">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-[#f1f1f1]">Playlists</h1>
-        <button
-          className="alt-button"
-          onClick={() => setShowCreate((v) => !v)}
-          type="button"
-        >
+        <button className="alt-button" onClick={() => setShowCreate((v) => !v)} type="button">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -108,28 +140,24 @@ const PlaylistsPage = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {playlists.map((playlist) => (
             <Link
-              className="group overflow-hidden rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] hover:border-[rgba(255,255,255,0.2)]"
+              className="group overflow-hidden rounded-xl bg-transparent hover:bg-[#272727] transition"
               key={playlist._id}
               to={`/playlists/${playlist._id}`}
             >
               {/* Thumbnail mosaic */}
-              <div className="aspect-video bg-gradient-to-br from-[#272727] to-[#1a1a1a] p-4">
-                <div className="flex h-full flex-col justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[#aaaaaa]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01" />
-                    </svg>
-                    <span className="text-xs text-[#aaaaaa]">Playlist</span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#aaaaaa]">{formatCount(playlist.totalVideos)} videos</p>
-                  </div>
+              <div className="relative aspect-video overflow-hidden rounded-xl bg-[#272727]">
+                <PlaylistThumbnail playlist={playlist} />
+                {/* Video count overlay */}
+                <div className="absolute inset-y-0 right-0 flex w-1/3 flex-col items-center justify-center gap-1 bg-black/70">
+                  <span className="text-lg font-bold text-white">{formatCount(playlist.totalVideos)}</span>
+                  <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 </div>
               </div>
-              <div className="p-3">
+              <div className="p-2">
                 <p className="line-clamp-1 text-sm font-medium text-[#f1f1f1]">{playlist.name}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs text-[#aaaaaa]">{playlist.description}</p>
-                <p className="mt-2 text-xs text-[#aaaaaa]">Updated {formatTimeAgo(playlist.updatedAt)}</p>
+                <p className="mt-0.5 text-xs text-[#aaaaaa]">Playlist · {formatTimeAgo(playlist.updatedAt)}</p>
               </div>
             </Link>
           ))}

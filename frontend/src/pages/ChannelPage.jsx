@@ -11,6 +11,7 @@ const ChannelPage = () => {
   const { username } = useParams();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Home");
+  const [videoSort, setVideoSort] = useState("latest");
   const [state, setState] = useState({ loading: true, error: "", channel: null, videos: [] });
 
   const loadChannel = async () => {
@@ -18,7 +19,7 @@ const ChannelPage = () => {
     try {
       const channelResponse = await apiRequest(`/api/v1/users/c/${username}`);
       const channel = channelResponse?.data;
-      const videosResponse = await apiRequest(`/api/v1/videos?userId=${channel._id}`, {}, { skipRefresh: true });
+      const videosResponse = await apiRequest(`/api/v1/videos?userId=${channel._id}&limit=50`, {}, { skipRefresh: true });
       setState({ loading: false, error: "", channel, videos: videosResponse?.data?.docs || [] });
     } catch (err) {
       setState({ loading: false, error: err.message, channel: null, videos: [] });
@@ -26,15 +27,18 @@ const ChannelPage = () => {
   };
 
   useEffect(() => { loadChannel(); }, [username]);
-  useEffect(() => { setActiveTab("Home"); }, [username]);
+  useEffect(() => { setActiveTab("Home"); setVideoSort("latest"); }, [username]);
 
   const channel = state.channel;
   const ownChannel = user?.username === channel?.username;
   const featuredVideo = state.videos[0] || null;
-  const popularVideos = useMemo(
-    () => [...state.videos].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 12),
-    [state.videos]
-  );
+
+  const sortedVideos = useMemo(() => {
+    const vids = [...state.videos];
+    if (videoSort === "popular") return vids.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+    if (videoSort === "oldest") return vids.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    return vids; // latest (default from API)
+  }, [state.videos, videoSort]);
 
   if (state.loading) {
     return (
@@ -55,11 +59,11 @@ const ChannelPage = () => {
     return <EmptyState description={state.error || "Channel not found."} title="Channel unavailable" />;
   }
 
-  const TABS = ["Home", "Videos", "About"];
+  const TABS = ["Home", "Videos", "Playlists", "About"];
 
   return (
     <div className="text-[#f1f1f1]">
-      {/* Banner — full width, no overlay */}
+      {/* Banner */}
       <div
         className="h-[180px] w-full overflow-hidden rounded-xl bg-cover bg-center md:h-[220px]"
         style={{
@@ -72,7 +76,6 @@ const ChannelPage = () => {
       {/* Channel info row */}
       <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-end gap-4">
-          {/* Avatar overlaps banner */}
           <Avatar
             className="-mt-8 h-20 w-20 rounded-full border-4 border-[#0f0f0f] sm:h-24 sm:w-24"
             name={channel.fullName}
@@ -86,7 +89,6 @@ const ChannelPage = () => {
           </div>
         </div>
 
-        {/* Subscribe / manage buttons */}
         <div className="flex gap-2">
           {ownChannel ? (
             <>
@@ -118,7 +120,7 @@ const ChannelPage = () => {
         </div>
       </div>
 
-      {/* Tab bar — underline style */}
+      {/* Tab bar */}
       <div className="mt-4 border-b border-[rgba(255,255,255,0.1)]">
         <div className="flex overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (
@@ -140,20 +142,15 @@ const ChannelPage = () => {
 
       {/* Tab content */}
       <div className="mt-6">
-        {/* Home tab */}
+        {/* ── Home ── */}
         {activeTab === "Home" && (
           featuredVideo ? (
             <div className="space-y-8">
-              {/* Featured video */}
               <div className="grid gap-4 lg:grid-cols-[minmax(0,480px),1fr]">
                 <Link className="block overflow-hidden rounded-xl bg-black" to={`/watch/${featuredVideo._id}`}>
                   <div className="aspect-video">
                     {featuredVideo.thumbnail?.url || featuredVideo.thumbnail ? (
-                      <img
-                        alt={featuredVideo.title}
-                        className="h-full w-full object-cover"
-                        src={featuredVideo.thumbnail?.url || featuredVideo.thumbnail}
-                      />
+                      <img alt={featuredVideo.title} className="h-full w-full object-cover" src={featuredVideo.thumbnail?.url || featuredVideo.thumbnail} />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-[#aaaaaa]">No thumbnail</div>
                     )}
@@ -167,16 +164,11 @@ const ChannelPage = () => {
                   <p className="line-clamp-3 text-sm text-[#aaaaaa]">{featuredVideo.description}</p>
                 </div>
               </div>
-
-              {/* Videos section */}
               <div>
                 <h2 className="mb-4 text-base font-medium text-[#f1f1f1]">Videos</h2>
                 <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {state.videos.map((video) => (
-                    <VideoCard
-                      key={video._id}
-                      video={{ ...video, ownerDetails: { username: channel.username, fullName: channel.fullName, avatar: channel.avatar } }}
-                    />
+                  {state.videos.slice(0, 8).map((video) => (
+                    <VideoCard key={video._id} video={{ ...video, ownerDetails: { username: channel.username, fullName: channel.fullName, avatar: channel.avatar } }} />
                   ))}
                 </div>
               </div>
@@ -186,37 +178,107 @@ const ChannelPage = () => {
           )
         )}
 
-        {/* Videos tab */}
+        {/* ── Videos ── */}
         {activeTab === "Videos" && (
-          state.videos.length ? (
-            <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {popularVideos.map((video) => (
-                <VideoCard
-                  key={video._id}
-                  video={{ ...video, ownerDetails: { username: channel.username, fullName: channel.fullName, avatar: channel.avatar } }}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState description="No public videos yet." title="No videos" />
-          )
-        )}
-
-        {/* About tab */}
-        {activeTab === "About" && (
-          <div className="max-w-2xl space-y-6">
-            <div>
-              <h2 className="mb-3 text-base font-medium text-[#f1f1f1]">Stats</h2>
-              <div className="space-y-2 text-sm text-[#aaaaaa]">
-                <p>{formatCount(channel.subscribersCount)} subscribers</p>
-                <p>{formatCount(state.videos.length)} videos</p>
-                <p>{formatCount(channel.channelsSubscribedToCount)} subscriptions</p>
-                {featuredVideo && <p>Last upload {formatTimeAgo(featuredVideo.createdAt)}</p>}
+          <div className="space-y-4">
+            {/* Sort controls */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-[#aaaaaa]">Sort by</span>
+              <div className="flex gap-2">
+                {[["latest", "Latest"], ["popular", "Popular"], ["oldest", "Oldest"]].map(([val, label]) => (
+                  <button
+                    className={`yt-chip ${videoSort === val ? "yt-chip-active" : ""}`}
+                    key={val}
+                    onClick={() => setVideoSort(val)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div>
-              <h2 className="mb-3 text-base font-medium text-[#f1f1f1]">Channel handle</h2>
-              <p className="text-sm text-[#aaaaaa]">@{channel.username}</p>
+
+            {sortedVideos.length ? (
+              <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {sortedVideos.map((video) => (
+                  <VideoCard key={video._id} video={{ ...video, ownerDetails: { username: channel.username, fullName: channel.fullName, avatar: channel.avatar } }} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState description="No public videos yet." title="No videos" />
+            )}
+          </div>
+        )}
+
+        {/* ── Playlists ── */}
+        {activeTab === "Playlists" && (
+          <EmptyState description="This channel hasn't created any public playlists." title="No playlists" />
+        )}
+
+        {/* ── About ── */}
+        {activeTab === "About" && (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-3 text-base font-medium text-[#f1f1f1]">Description</h2>
+                <p className="text-sm leading-6 text-[#aaaaaa]">
+                  {ownChannel
+                    ? "This is your public channel. Add a description from settings to tell viewers about yourself."
+                    : `Welcome to ${channel.fullName}'s channel. Subscribe to stay updated with the latest uploads.`}
+                </p>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-base font-medium text-[#f1f1f1]">Details</h2>
+                <div className="space-y-3 text-sm text-[#aaaaaa]">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span>@{channel.username}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>{formatCount(channel.subscribersCount)} subscribers</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="15" rx="2" /><path d="M16 3H8" />
+                    </svg>
+                    <span>{formatCount(state.videos.length)} videos</span>
+                  </div>
+                  {featuredVideo && (
+                    <div className="flex items-center gap-3">
+                      <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                      <span>Last upload {formatTimeAgo(featuredVideo.createdAt)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Stats sidebar */}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4">
+                <h2 className="mb-3 text-sm font-medium text-[#f1f1f1]">Stats</h2>
+                <div className="space-y-3">
+                  {[
+                    { label: "Subscribers", value: formatCount(channel.subscribersCount) },
+                    { label: "Videos", value: formatCount(state.videos.length) },
+                    { label: "Following", value: formatCount(channel.channelsSubscribedToCount) },
+                  ].map((stat) => (
+                    <div className="flex items-center justify-between" key={stat.label}>
+                      <span className="text-sm text-[#aaaaaa]">{stat.label}</span>
+                      <span className="text-sm font-medium text-[#f1f1f1]">{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

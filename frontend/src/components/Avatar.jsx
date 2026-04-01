@@ -3,6 +3,7 @@ import { initialsFromName } from "../lib/utils.js";
 const COLORS = [
   "bg-[#1565c0]", "bg-[#6a1b9a]", "bg-[#ad1457]",
   "bg-[#00695c]", "bg-[#e65100]", "bg-[#4527a0]",
+  "bg-[#0277bd]", "bg-[#558b2f]",
 ];
 
 const Avatar = ({ src, name, className = "h-9 w-9 rounded-full" }) => {
@@ -15,7 +16,10 @@ const Avatar = ({ src, name, className = "h-9 w-9 rounded-full" }) => {
   const color = COLORS[colorIndex];
 
   return (
-    <div className={`${className} ${color} grid place-items-center text-xs font-medium text-white`}>
+    <div
+      className={`${className} ${color} grid place-items-center font-medium text-white`}
+      style={{ fontSize: "clamp(10px, 35%, 16px)" }}
+    >
       {initials}
     </div>
   );
