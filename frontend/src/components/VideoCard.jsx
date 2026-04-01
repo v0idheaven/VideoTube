@@ -28,26 +28,30 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const thumbnailMarkup = thumbnail ? (
+  const thumbnailImg = thumbnail ? (
     <img
       alt={video.title}
-      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
       loading="lazy"
       src={thumbnail}
     />
   ) : (
-    <div className="flex h-full items-center justify-center bg-[#272727] text-xs text-[#aaaaaa]">
+    <div className="flex h-full w-full items-center justify-center bg-[#272727] text-xs text-[#aaaaaa]">
       No thumbnail
     </div>
   );
 
+  /* ── Compact variant (watch page sidebar) ── */
   if (compact) {
     return (
       <article className="group flex gap-2">
-        <Link className="relative block w-[168px] flex-shrink-0 overflow-hidden rounded-xl bg-[#272727]" to={watchLink}>
-          <div className="aspect-video">{thumbnailMarkup}</div>
+        <Link
+          className="relative block w-[168px] flex-shrink-0 overflow-hidden rounded-xl bg-[#272727]"
+          to={watchLink}
+        >
+          <div className="aspect-video overflow-hidden">{thumbnailImg}</div>
           {video.duration != null && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/90 px-1 py-0.5 text-[11px] font-medium text-white">
+            <span className="absolute bottom-1 right-1 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
               {formatDuration(video.duration)}
             </span>
           )}
@@ -67,15 +71,21 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
     );
   }
 
+  /* ── Standard feed card — NO wrapper border/bg, just thumbnail + meta ── */
   return (
     <article className="group">
+      {/* Thumbnail */}
       <Link className="relative block aspect-video overflow-hidden rounded-xl bg-[#272727]" to={watchLink}>
-        {thumbnailMarkup}
+        {thumbnailImg}
+
+        {/* Duration badge — bottom-right */}
         {video.duration != null && (
-          <span className="absolute bottom-1.5 right-1.5 rounded bg-black/90 px-1.5 py-0.5 text-[11px] font-medium text-white">
+          <span className="absolute bottom-1.5 right-1.5 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-medium text-white">
             {formatDuration(video.duration)}
           </span>
         )}
+
+        {/* Three-dot menu — top-right, only on thumbnail hover */}
         <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100" ref={menuRef}>
           <button
             aria-label="More options"
@@ -101,6 +111,7 @@ const VideoCard = ({ video, channelLink, compact = false }) => {
         </div>
       </Link>
 
+      {/* Meta row — avatar + title + channel + views */}
       <div className="mt-3 flex gap-3">
         <Link className="flex-shrink-0" to={channelHref}>
           <Avatar className="h-9 w-9 rounded-full" name={owner.fullName || owner.username} src={owner.avatar} />

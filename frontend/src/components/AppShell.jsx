@@ -36,6 +36,11 @@ const BellIcon = () => (
     <path d="M9 20a3 3 0 0 0 6 0" />
   </svg>
 );
+const UserCircleIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+  </svg>
+);
 const HomeIcon = ({ filled }) => (
   <svg className="h-6 w-6" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke={filled ? "none" : "currentColor"} strokeWidth="2">
     <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4a1 1 0 0 1-1-1V9.5z" />
@@ -143,7 +148,10 @@ const AppShell = () => {
     let cancelled = false;
     setSubscriptionsBusy(true);
     apiRequest(`/api/v1/subscriptions/u/${user._id}`)
-      .then((r) => { if (!cancelled) setSubscriptionChannels((r?.data || []).map((i) => i.subscribedChannel).filter(Boolean)); })
+      .then((r) => {
+        if (!cancelled)
+          setSubscriptionChannels((r?.data || []).map((i) => i.subscribedChannel).filter(Boolean));
+      })
       .catch(() => { if (!cancelled) setSubscriptionChannels([]); })
       .finally(() => { if (!cancelled) setSubscriptionsBusy(false); });
     return () => { cancelled = true; };
@@ -194,7 +202,6 @@ const AppShell = () => {
   const renderNavItem = (item, collapsed = false) => {
     const active = isActive(item);
     const IconComp = ICON_MAP[item.icon] || HomeIcon;
-
     if (collapsed) {
       return (
         <NavLink
@@ -208,10 +215,9 @@ const AppShell = () => {
         </NavLink>
       );
     }
-
     return (
       <NavLink
-        className={`flex items-center gap-6 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-[#272727] font-medium" : "hover:bg-[#272727]"}`}
+        className={`flex h-10 items-center gap-6 rounded-xl px-3 text-sm transition ${active ? "bg-[#272727] font-medium" : "hover:bg-[#272727]"}`}
         key={item.id}
         to={item.to}
       >
@@ -223,17 +229,17 @@ const AppShell = () => {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1]">
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-2 bg-[#0f0f0f] px-4">
-        <div className={`flex flex-shrink-0 items-center gap-1 ${showSidebar ? (sidebarOpen ? "w-60" : "w-[72px]") : ""}`}>
+        <div className={`flex flex-shrink-0 items-center ${showSidebar ? (sidebarOpen ? "w-60" : "w-[72px]") : ""}`}>
           <button className="yt-icon-button" onClick={() => setSidebarOpen((v) => !v)} type="button">
             <MenuIcon />
           </button>
-          <Link className="flex items-center gap-1 text-[#f1f1f1]" to={user ? "/feed" : "/"}>
+          <Link className="flex items-center text-[#f1f1f1]" to={user ? "/feed" : "/"}>
             <div className="flex h-[18px] w-[26px] items-center justify-center rounded-sm bg-[#ff0000]">
               <PlayIcon />
             </div>
-            <span className="text-xl font-bold tracking-tight">VideoTube</span>
+            <span className="ml-1 text-xl font-bold tracking-tight">VideoTube</span>
           </Link>
         </div>
 
@@ -277,9 +283,7 @@ const AppShell = () => {
               className="flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.2)] px-3 py-1.5 text-sm font-medium text-[#3ea6ff] hover:bg-[#263850]"
               to="/login"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-              </svg>
+              <UserCircleIcon />
               Sign in
             </Link>
           )}
@@ -307,7 +311,7 @@ const AppShell = () => {
       )}
 
       <div className={showSearch ? "pt-[90px] md:pt-14" : "pt-14"}>
-        {/* ── Sidebar ── */}
+        {/* Sidebar */}
         {showSidebar && (
           <aside className={`fixed bottom-0 left-0 top-14 hidden overflow-y-auto bg-[#0f0f0f] py-3 transition-all duration-200 md:block ${sidebarOpen ? "w-60" : "w-[72px]"}`}>
             {sidebarOpen ? (
@@ -315,23 +319,17 @@ const AppShell = () => {
                 <div className="space-y-0.5">
                   {primaryLinks.map((item) => renderNavItem(item))}
                 </div>
-                <Divider />
                 {user && (
                   <>
+                    <Divider />
                     <SectionLabel label="You" />
-                    <div className="space-y-0.5">
-                      {libraryLinks.map((item) => renderNavItem(item))}
-                    </div>
+                    <div className="space-y-0.5">{libraryLinks.map((item) => renderNavItem(item))}</div>
                     <Divider />
                     <SectionLabel label="Explore" />
-                    <div className="space-y-0.5">
-                      {exploreLinks.map((item) => renderNavItem(item))}
-                    </div>
+                    <div className="space-y-0.5">{exploreLinks.map((item) => renderNavItem(item))}</div>
                     <Divider />
                     <SectionLabel label="Studio" />
-                    <div className="space-y-0.5">
-                      {creatorLinks.map((item) => renderNavItem(item))}
-                    </div>
+                    <div className="space-y-0.5">{creatorLinks.map((item) => renderNavItem(item))}</div>
                     <Divider />
                     <SectionLabel label="Subscriptions" />
                     {subscriptionsBusy ? (
@@ -342,7 +340,7 @@ const AppShell = () => {
                       <div className="space-y-0.5">
                         {visibleSubscriptions.map((ch) => (
                           <Link
-                            className="flex items-center gap-6 rounded-xl px-3 py-2 text-sm hover:bg-[#272727]"
+                            className="flex h-10 items-center gap-6 rounded-xl px-3 text-sm hover:bg-[#272727]"
                             key={ch._id}
                             to={`/channel/${ch.username}`}
                           >
@@ -350,7 +348,7 @@ const AppShell = () => {
                             <span className="truncate">{ch.fullName || ch.username}</span>
                           </Link>
                         ))}
-                        <Link className="flex items-center gap-6 rounded-xl px-3 py-2 text-sm text-[#aaaaaa] hover:bg-[#272727]" to="/subscriptions">
+                        <Link className="flex h-10 items-center gap-6 rounded-xl px-3 text-sm text-[#aaaaaa] hover:bg-[#272727]" to="/subscriptions">
                           <span className="flex h-6 w-6 items-center justify-center text-base">›</span>
                           <span>See all</span>
                         </Link>
@@ -360,7 +358,7 @@ const AppShell = () => {
                     )}
                     <Divider />
                     <button
-                      className="flex w-full items-center gap-6 rounded-xl px-3 py-2 text-sm hover:bg-[#272727]"
+                      className="flex h-10 w-full items-center gap-6 rounded-xl px-3 text-sm hover:bg-[#272727]"
                       onClick={handleLogout}
                       type="button"
                     >
@@ -378,7 +376,7 @@ const AppShell = () => {
           </aside>
         )}
 
-        {/* Mobile nav */}
+        {/* Mobile nav strip */}
         {showSidebar && (
           <div className="border-b border-[rgba(255,255,255,0.1)] bg-[#0f0f0f] px-3 py-2 md:hidden">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
@@ -398,7 +396,7 @@ const AppShell = () => {
           </div>
         )}
 
-        {/* ── Main ── */}
+        {/* Main */}
         <main className={showSidebar ? (sidebarOpen ? "md:ml-60" : "md:ml-[72px]") : ""}>
           <div className={
             isWatchPage ? "mx-auto max-w-[1760px] px-4 py-4 md:px-6"

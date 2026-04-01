@@ -159,6 +159,7 @@ const FeedExperiencePage = () => {
 
   return (
     <div className="text-[#f1f1f1]">
+      {/* Category chips — sticky below header */}
       {!query && !section && (
         <div className="sticky top-14 z-20 -mx-4 border-b border-[rgba(255,255,255,0.1)] bg-[#0f0f0f] px-4 py-3 md:-mx-6 md:px-6">
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-0.5">

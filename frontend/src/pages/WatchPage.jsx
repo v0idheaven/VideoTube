@@ -216,11 +216,17 @@ const WatchPage = () => {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),402px]">
-      {/* Left */}
+      {/* ── Left column ── */}
       <div className="min-w-0 space-y-4">
         {/* Player */}
         <div className="overflow-hidden rounded-xl bg-black">
-          <video className="max-h-[75vh] w-full bg-black" controls onError={() => setPlayerError(true)} poster={thumbnail} src={videoSource} />
+          <video
+            className="max-h-[75vh] w-full bg-black"
+            controls
+            onError={() => setPlayerError(true)}
+            poster={thumbnail}
+            src={videoSource}
+          />
         </div>
 
         {playerError && (
@@ -250,8 +256,9 @@ const WatchPage = () => {
         {/* Title */}
         <h1 className="text-xl font-semibold leading-tight text-[#f1f1f1]">{video.title}</h1>
 
-        {/* Channel + actions row */}
+        {/* Channel info + action pills row */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Channel info */}
           <div className="flex items-center gap-3">
             <Link to={`/channel/${video.owner?.username}`}>
               <Avatar className="h-10 w-10 rounded-full" name={ownerName} src={video.owner?.avatar} />
@@ -278,8 +285,9 @@ const WatchPage = () => {
             )}
           </div>
 
+          {/* Action pills */}
           <div className="flex flex-wrap gap-2">
-            {/* Like/Dislike pill */}
+            {/* Like/Dislike single pill with divider */}
             <div className="flex overflow-hidden rounded-full bg-[#272727]">
               <button
                 className={`flex h-9 items-center gap-2 px-4 text-sm font-medium transition hover:bg-[#3f3f3f] disabled:opacity-60 ${video.isLiked ? "text-[#3ea6ff]" : "text-[#f1f1f1]"}`}
@@ -312,8 +320,11 @@ const WatchPage = () => {
           </div>
         </div>
 
-        {/* Description */}
-        <div className="cursor-pointer rounded-xl bg-[#272727] p-3" onClick={() => setDescExpanded((v) => !v)}>
+        {/* Description box */}
+        <div
+          className="cursor-pointer rounded-xl bg-[#272727] p-3"
+          onClick={() => setDescExpanded((v) => !v)}
+        >
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#f1f1f1]">
             <span>{formatCount(video.views)} views</span>
             <span>{formatDate(video.createdAt)}</span>
@@ -428,7 +439,7 @@ const WatchPage = () => {
         </div>
       </div>
 
-      {/* Right sidebar */}
+      {/* ── Right sidebar ── */}
       <aside className="space-y-3">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {["All", "From this channel", "Popular"].map((item) => (
@@ -447,7 +458,9 @@ const WatchPage = () => {
             railVideos.map((v) => <VideoCard compact key={v._id} video={v} />)
           ) : (
             <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] px-4 py-5 text-sm text-[#aaaaaa]">
-              {activeRail === "From this channel" ? "More from this creator will appear here." : "More recommendations will show up as the library grows."}
+              {activeRail === "From this channel"
+                ? "More from this creator will appear here."
+                : "More recommendations will show up as the library grows."}
             </div>
           )}
         </div>

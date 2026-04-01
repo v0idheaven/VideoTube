@@ -13,8 +13,9 @@
 }
 
 body {
-  @apply min-h-screen bg-[#0f0f0f] font-sans text-[#f1f1f1] antialiased;
+  @apply min-h-screen bg-[#0f0f0f] antialiased;
   font-family: "Roboto", Arial, sans-serif;
+  color: #f1f1f1;
 }
 
 #root {
@@ -30,21 +31,28 @@ body {
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* ── Font utility ── */
+.font-roboto { font-family: "Roboto", Arial, sans-serif; }
+
 /* ── Chips ── */
 .yt-chip {
-  @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-[#272727] px-3 py-1.5 text-sm font-medium text-[#f1f1f1] transition hover:bg-[#3f3f3f];
+  @apply inline-flex flex-shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-[#272727] px-3 py-1.5 text-sm font-medium text-[#f1f1f1] transition hover:bg-[#3f3f3f];
 }
 .yt-chip-active {
   @apply bg-[#f1f1f1] text-black hover:bg-[#e5e5e5];
 }
 
+/* ── Badge ── */
+.yt-badge { @apply inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium; }
+.yt-badge-green { @apply bg-[#00b300] text-white; }
+.yt-badge-red { @apply bg-[#ff0000] text-white; }
+.yt-badge-gray { @apply bg-[#272727] text-[#aaaaaa]; }
+
 /* ── Nav items ── */
 .yt-nav-item {
   @apply flex items-center gap-6 rounded-xl px-3 py-2 text-sm font-normal text-[#f1f1f1] transition hover:bg-[#272727];
 }
-.yt-nav-item-active {
-  @apply bg-[#272727] font-medium;
-}
+.yt-nav-item-active { @apply bg-[#272727] font-medium; }
 
 /* ── Icon button ── */
 .yt-icon-button {
@@ -80,7 +88,7 @@ body {
   @apply w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[#121212] px-4 py-3 text-sm text-[#f1f1f1] outline-none transition placeholder:text-[#aaaaaa] focus:border-[#3ea6ff];
 }
 
-/* ── Glass panel (legacy compat) ── */
+/* ── Glass panel ── */
 .glass-panel {
   @apply rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121];
 }
@@ -96,7 +104,6 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s ease-in-out 0s;
 }
 
-/* ── Auth input autofill ── */
 .auth-input:-webkit-autofill,
 .auth-input:-webkit-autofill:hover,
 .auth-input:-webkit-autofill:focus {

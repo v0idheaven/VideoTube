@@ -59,9 +59,9 @@ const ChannelPage = () => {
 
   return (
     <div className="text-[#f1f1f1]">
-      {/* Banner */}
+      {/* Banner — full width, no overlay */}
       <div
-        className="h-[180px] w-full rounded-xl bg-cover bg-center md:h-[220px]"
+        className="h-[180px] w-full overflow-hidden rounded-xl bg-cover bg-center md:h-[220px]"
         style={{
           backgroundImage: channel.coverImage
             ? `url(${channel.coverImage})`
@@ -69,9 +69,10 @@ const ChannelPage = () => {
         }}
       />
 
-      {/* Channel info */}
+      {/* Channel info row */}
       <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-end gap-4">
+          {/* Avatar overlaps banner */}
           <Avatar
             className="-mt-8 h-20 w-20 rounded-full border-4 border-[#0f0f0f] sm:h-24 sm:w-24"
             name={channel.fullName}
@@ -85,6 +86,7 @@ const ChannelPage = () => {
           </div>
         </div>
 
+        {/* Subscribe / manage buttons */}
         <div className="flex gap-2">
           {ownChannel ? (
             <>
@@ -116,7 +118,7 @@ const ChannelPage = () => {
         </div>
       </div>
 
-      {/* Tab bar */}
+      {/* Tab bar — underline style */}
       <div className="mt-4 border-b border-[rgba(255,255,255,0.1)]">
         <div className="flex overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (
@@ -138,15 +140,20 @@ const ChannelPage = () => {
 
       {/* Tab content */}
       <div className="mt-6">
+        {/* Home tab */}
         {activeTab === "Home" && (
           featuredVideo ? (
             <div className="space-y-8">
-              {/* Featured */}
+              {/* Featured video */}
               <div className="grid gap-4 lg:grid-cols-[minmax(0,480px),1fr]">
                 <Link className="block overflow-hidden rounded-xl bg-black" to={`/watch/${featuredVideo._id}`}>
                   <div className="aspect-video">
                     {featuredVideo.thumbnail?.url || featuredVideo.thumbnail ? (
-                      <img alt={featuredVideo.title} className="h-full w-full object-cover" src={featuredVideo.thumbnail?.url || featuredVideo.thumbnail} />
+                      <img
+                        alt={featuredVideo.title}
+                        className="h-full w-full object-cover"
+                        src={featuredVideo.thumbnail?.url || featuredVideo.thumbnail}
+                      />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-[#aaaaaa]">No thumbnail</div>
                     )}
@@ -161,7 +168,7 @@ const ChannelPage = () => {
                 </div>
               </div>
 
-              {/* Recent uploads */}
+              {/* Videos section */}
               <div>
                 <h2 className="mb-4 text-base font-medium text-[#f1f1f1]">Videos</h2>
                 <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -179,6 +186,7 @@ const ChannelPage = () => {
           )
         )}
 
+        {/* Videos tab */}
         {activeTab === "Videos" && (
           state.videos.length ? (
             <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -194,6 +202,7 @@ const ChannelPage = () => {
           )
         )}
 
+        {/* About tab */}
         {activeTab === "About" && (
           <div className="max-w-2xl space-y-6">
             <div>
