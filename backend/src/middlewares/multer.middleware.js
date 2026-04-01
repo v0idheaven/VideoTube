@@ -46,7 +46,14 @@ const fileFilter = (_, file, cb) => {
     cb(error);
 };
 
-export const upload = multer({ 
+// 100MB for videos, 10MB for images
+const limits = {
+    fileSize: 100 * 1024 * 1024,
+    files: 2,
+};
+
+export const upload = multer({
     storage,
     fileFilter,
+    limits,
 });

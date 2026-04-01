@@ -159,10 +159,18 @@ const ChannelPage = () => {
                 <button
                   className={channel.isSubscribed ? "alt-button" : "gradient-button"}
                   onClick={async () => {
-                    await apiRequest(`/api/v1/subscriptions/c/${channel._id}`, {
+                    const response = await apiRequest(`/api/v1/subscriptions/c/${channel._id}`, {
                       method: "POST",
                     });
-                    await loadChannel();
+                    const subscribed = Boolean(response?.data?.subscribed);
+                    setState((c) => ({
+                      ...c,
+                      channel: {
+                        ...c.channel,
+                        isSubscribed: subscribed,
+                        subscribersCount: (Number(c.channel.subscribersCount) || 0) + (subscribed ? 1 : -1),
+                      },
+                    }));
                   }}
                   type="button"
                 >

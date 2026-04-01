@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import compression from "compression";
 import { fileURLToPath } from "url";
 
 import userRouter from "./routes/user.routes.js";
@@ -37,6 +39,17 @@ if (process.env.NODE_ENV === "production") {
     app.set("trust proxy", 1);
 }
 
+// Security headers
+app.use(
+    helmet({
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        contentSecurityPolicy: false, // handled by frontend
+    })
+);
+
+// Gzip compression
+app.use(compression());
+
 app.use(
     cors({
         origin(origin, callback) {
@@ -70,6 +83,7 @@ app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/tweets", tweetRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 
+// 404 handler
 app.use((_, res) => {
     res.status(404).json({
         statusCode: 404,
@@ -80,13 +94,25 @@ app.use((_, res) => {
     });
 });
 
-app.use((err, _, res, __) => {
-    const statusCode = err.statusCode || 500;
+// Global error handler
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+    const statusCode = err.statusCode || err.status || 500;
+    const message = err.message || "Internal server error";
+
+    if (process.env.NODE_ENV !== "production") {
+        console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} - ${statusCode}: ${message}`);
+        if (statusCode >= 500) {
+            console.error(err.stack);
+        }
+    } else if (statusCode >= 500) {
+        console.error(`[${new Date().toISOString()}] 500 ${req.method} ${req.path}: ${message}`);
+    }
 
     res.status(statusCode).json({
         statusCode,
         data: null,
-        message: err.message || "Internal server error",
+        message: statusCode >= 500 ? "Internal server error" : message,
         success: false,
         errors: err.errors || []
     });

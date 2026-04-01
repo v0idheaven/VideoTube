@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
-import ApiError from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
 import {
@@ -11,6 +11,9 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { createDefaultAvatar } from "../utils/defaultAvatar.js";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -37,21 +40,22 @@ const getCookieOptions = () => ({
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  // get user details from frontend
-  // validate not empty
-  // check if user already exists -> username, email
-  // check for images, avatar
-  //upload them to cloudinary, avatar
-  // create user object -> create entry in db
-  // remove password and refresh token field from response
-  // check for user creation
-  // return res
-
   const { fullName, username, email, password } = req.body;
-  // console.log("email: ", email, "username: ", username, "fullName: ", fullName, "password: ", password);
 
   if ([fullName, username, email, password].some((field) => !field?.trim())) {
     throw new ApiError(400, "All fields are required");
+  }
+
+  if (!EMAIL_REGEX.test(email.trim())) {
+    throw new ApiError(400, "Invalid email format");
+  }
+
+  if (!USERNAME_REGEX.test(username.trim())) {
+    throw new ApiError(400, "Username must be 3-30 characters and contain only letters, numbers, and underscores");
+  }
+
+  if (password.length < 8) {
+    throw new ApiError(400, "Password must be at least 8 characters long");
   }
 
   const normalizedFullName = fullName.trim();
@@ -64,15 +68,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (existedUser) {
     throw new ApiError(
-      400,
+      409,
       "User already exists with the provided email or username"
     );
   }
 
-  // console.log(req.files)
-
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
-  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   let coverImageLocalPath;
   if (
@@ -139,17 +140,14 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // req body -> data
-  // username or email
-  // find the user
-  // password check
-  // access and refresh token
-  // send cookie
-
   const { email, username, password } = req.body;
 
   if (!username && !email) {
     throw new ApiError(400, "Username or email is required for login");
+  }
+
+  if (!password?.trim()) {
+    throw new ApiError(400, "Password is required");
   }
 
   const user = await User.findOne({
@@ -220,7 +218,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     req.cookies.refreshToken || req.body?.refreshToken;
 
   if (!incomingRefreshToken) {
-    throw new ApiError(401, "unauthorized request");
+    throw new ApiError(401, "Unauthorized request");
   }
 
   try {
@@ -259,7 +257,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    throw new ApiError(401, "Invalid refresh token");
+    throw new ApiError(401, error?.message || "Invalid refresh token");
   }
 });
 
@@ -268,6 +266,10 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   if (!oldPassword?.trim() || !newPassword?.trim()) {
     throw new ApiError(400, "Old password and new password are required");
+  }
+
+  if (newPassword.length < 8) {
+    throw new ApiError(400, "New password must be at least 8 characters long");
   }
 
   const user = await User.findById(req.user?._id);
@@ -296,6 +298,14 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
   if ([fullName, username, email].some((field) => !field?.trim())) {
     throw new ApiError(400, "All fields are required");
+  }
+
+  if (!EMAIL_REGEX.test(email.trim())) {
+    throw new ApiError(400, "Invalid email format");
+  }
+
+  if (!USERNAME_REGEX.test(username.trim())) {
+    throw new ApiError(400, "Username must be 3-30 characters and contain only letters, numbers, and underscores");
   }
 
   const normalizedFullName = fullName.trim();
@@ -369,8 +379,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const oldAvatarPublicId = extractPublicIdFromCloudinaryUrl(currentUser.avatar);
 
-  if (currentUser.avatar && currentUser.avatar !== avatarUrl) {
-    await deleteOnCloudinary(oldAvatarPublicId);
+  if (currentUser.avatar && currentUser.avatar !== avatarUrl && oldAvatarPublicId) {
+    await deleteOnCloudinary(oldAvatarPublicId).catch(() => {});
   }
 
   return res
@@ -416,8 +426,8 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     currentUser.coverImage
   );
 
-  if (currentUser.coverImage && currentUser.coverImage !== coverImageUrl) {
-    await deleteOnCloudinary(oldCoverImagePublicId);
+  if (currentUser.coverImage && currentUser.coverImage !== coverImageUrl && oldCoverImagePublicId) {
+    await deleteOnCloudinary(oldCoverImagePublicId).catch(() => {});
   }
 
   return res
@@ -481,6 +491,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: 1,
         avatar: 1,
         coverImage: 1,
+        email: 1,
+        createdAt: 1,
       },
     },
   ]);

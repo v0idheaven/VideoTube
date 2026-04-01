@@ -201,6 +201,7 @@ const AppShell = () => {
   const [searchValue, setSearchValue] = useState(query);
   const [subscriptionChannels, setSubscriptionChannels] = useState([]);
   const [subscriptionsBusy, setSubscriptionsBusy] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const isStudioArea = pathname.startsWith("/studio") || pathname.startsWith("/upload");
   const isWatchPage = pathname.startsWith("/watch");
@@ -324,7 +325,7 @@ const AppShell = () => {
     navigate("/");
   };
 
-  const renderNavigationItem = (item, mobile = false) => {
+  const renderNavigationItem = (item, mobile = false, collapsed = false) => {
     const isActive = item.feedRoot
       ? pathname === "/feed" && !section
       : item.section
@@ -332,6 +333,19 @@ const AppShell = () => {
         : item.matches
           ? item.matches.some((match) => pathname.startsWith(match))
           : pathname === item.to;
+
+    if (collapsed) {
+      return (
+        <NavLink
+          className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${isActive ? "bg-[#272727] text-white" : "text-white/70 hover:bg-[#272727] hover:text-white"}`}
+          key={item.id}
+          title={item.label}
+          to={item.to}
+        >
+          <Icon className="h-[18px] w-[18px]" name={item.icon} />
+        </NavLink>
+      );
+    }
 
     return (
       <NavLink
@@ -355,9 +369,10 @@ const AppShell = () => {
     <div className="min-h-screen bg-[#0f0f0f] text-white">
       <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-[#0f0f0f]/95 backdrop-blur-xl">
         <div className="flex h-14 items-center gap-3 px-3 md:px-4">
-          <div className={`flex min-w-0 items-center gap-2 ${showSidebar ? "md:w-[224px]" : ""}`}>
+          <div className={`flex min-w-0 items-center gap-2 ${showSidebar ? (sidebarOpen ? "md:w-[224px]" : "md:w-[72px]") : ""}`}>
             <button
               className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/72 transition hover:bg-white/5 hover:text-white"
+              onClick={() => setSidebarOpen((v) => !v)}
               type="button"
             >
               <Icon className="h-5 w-5" name="menu" />
@@ -455,13 +470,13 @@ const AppShell = () => {
 
       <div className={`${showSearch ? "pt-[98px] md:pt-14" : "pt-14"}`}>
         {showSidebar ? (
-          <aside className="fixed bottom-0 left-0 top-14 hidden w-[224px] overflow-y-auto border-r border-white/10 bg-[#0f0f0f] px-3 py-3 md:block">
+          <aside className={`fixed bottom-0 left-0 top-14 hidden overflow-y-auto border-r border-white/10 bg-[#0f0f0f] px-3 py-3 transition-all duration-200 md:block ${sidebarOpen ? "w-[224px]" : "w-[72px]"}`}>
             <nav className="space-y-1">
-              {primaryLinks.map((item) => renderNavigationItem(item))}
+              {primaryLinks.map((item) => renderNavigationItem(item, false, !sidebarOpen))}
             </nav>
 
             {user ? (
-              <div className="mt-3">
+              <div className={`mt-3 ${!sidebarOpen ? "hidden" : ""}`}>
                 <div className="border-t border-white/10 pt-3">
                   <p className="px-3 pb-2 text-sm font-medium text-white">You</p>
                   <div className="space-y-1">
@@ -548,7 +563,7 @@ const AppShell = () => {
           </div>
         ) : null}
 
-        <main className={showSidebar ? "md:ml-[224px]" : ""}>
+        <main className={showSidebar ? (sidebarOpen ? "md:ml-[224px]" : "md:ml-[72px]") : ""}>
           <div className={pathname.startsWith("/channel") ? "mx-auto max-w-[1540px] px-4 py-6 md:px-6 md:py-8" : isWatchPage ? "mx-auto max-w-[1760px] px-4 py-6 md:px-6 md:py-8" : "mx-auto max-w-[1880px] px-4 py-6 md:px-6 md:py-8"}>
             <Outlet />
           </div>

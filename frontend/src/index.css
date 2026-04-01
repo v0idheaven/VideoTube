@@ -179,3 +179,12 @@ body {
   border-radius: 9999px;
   background: #2f2f2f;
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

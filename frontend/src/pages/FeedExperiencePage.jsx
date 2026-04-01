@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import EmptyState from "../components/EmptyState.jsx";
 import VideoCard from "../components/VideoCard.jsx";
 import { apiRequest } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
-const recommendationChips = [
+const CHIPS = [
   "All",
   "JavaScript",
   "React",
@@ -16,34 +16,14 @@ const recommendationChips = [
   "Live",
   "Education",
   "New to you",
+  "Trending",
+  "Recently uploaded",
 ];
 
-const sectionMeta = {
-  shorts: {
-    eyebrow: "Shorts",
-    title: "Short videos",
-    description: "Quick clips pulled from the shortest published uploads in the library.",
-  },
-  trending: {
-    eyebrow: "Trending",
-    title: "Trending now",
-    description: "Videos sorted by live view counts across the published feed.",
-  },
-  music: {
-    eyebrow: "Music",
-    title: "Music",
-    description: "Published videos matching music-related search terms from the backend feed.",
-  },
-  gaming: {
-    eyebrow: "Gaming",
-    title: "Gaming",
-    description: "Published videos matching gaming-related search terms from the backend feed.",
-  },
-};
-
-const buildFeedRequest = ({ query, section }) => {
+const buildFeedRequest = ({ query, section, page = 1 }) => {
   const params = new URLSearchParams();
   params.set("limit", "24");
+  params.set("page", String(page));
 
   if (section === "trending") {
     params.set("sortBy", "views");
@@ -55,20 +35,11 @@ const buildFeedRequest = ({ query, section }) => {
     params.set("sortType", "asc");
   }
 
-  if (section === "music" && !query) {
-    params.set("query", "music");
-  }
+  if (section === "music" && !query) params.set("query", "music");
+  if (section === "gaming" && !query) params.set("query", "gaming");
+  if (query) params.set("query", query);
 
-  if (section === "gaming" && !query) {
-    params.set("query", "gaming");
-  }
-
-  if (query) {
-    params.set("query", query);
-  }
-
-  const suffix = params.toString();
-  return suffix ? `?${suffix}` : "";
+  return `?${params.toString()}`;
 };
 
 const FeedExperiencePage = () => {
@@ -76,93 +47,123 @@ const FeedExperiencePage = () => {
   const [searchParams] = useSearchParams();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [activeChip, setActiveChip] = useState("All");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const loaderRef = useRef(null);
+
   const query = searchParams.get("q")?.trim() || "";
   const section = searchParams.get("section")?.trim() || "";
-  const activeSectionMeta = sectionMeta[section] || null;
 
-  useEffect(() => {
-    let cancelled = false;
+  const sectionTitle = useMemo(() => {
+    if (query) return `Results for "${query}"`;
+    if (section === "trending") return "Trending";
+    if (section === "shorts") return "Shorts";
+    if (section === "music") return "Music";
+    if (section === "gaming") return "Gaming";
+    return null;
+  }, [query, section]);
 
-    const loadVideos = async () => {
+  const loadVideos = useCallback(async (pageNum = 1, append = false) => {
+    if (pageNum === 1) {
       setLoading(true);
       setError("");
+    } else {
+      setLoadingMore(true);
+    }
 
-      try {
-        const suffix = buildFeedRequest({ query, section });
-        const response = await apiRequest(`/api/v1/videos${suffix}`, {}, { skipRefresh: true });
-        let docs = response?.data?.docs || [];
+    try {
+      const suffix = buildFeedRequest({ query, section, page: pageNum });
+      const response = await apiRequest(`/api/v1/videos${suffix}`, {}, { skipRefresh: true });
+      let docs = response?.data?.docs || [];
 
-        if (section === "shorts") {
-          docs = docs.filter((video) => (Number(video.duration) || 0) <= 180);
-        }
-
-        if (!cancelled) {
-          setVideos(docs);
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (section === "shorts") {
+        docs = docs.filter((v) => (Number(v.duration) || 0) <= 180);
       }
-    };
 
-    loadVideos();
+      const totalPages = response?.data?.totalPages || 1;
+      setHasMore(pageNum < totalPages);
 
-    return () => {
-      cancelled = true;
-    };
+      if (append) {
+        setVideos((prev) => {
+          const seen = new Set(prev.map((v) => v._id));
+          return [...prev, ...docs.filter((v) => !seen.has(v._id))];
+        });
+      } else {
+        setVideos(docs);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [query, section]);
+
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    loadVideos(1, false);
   }, [query, section, user]);
 
   useEffect(() => {
     setActiveChip("All");
   }, [query, section]);
 
+  // Infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          loadVideos(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, page, loadVideos]);
+
   const filteredVideos = useMemo(() => {
-    if (!videos.length || query || activeChip === "All") {
-      return videos;
-    }
+    if (!videos.length || query || activeChip === "All") return videos;
 
     if (activeChip === "New to you") {
-      return [...videos]
-        .sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt))
-        .reverse();
+      return [...videos].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    if (activeChip === "Recently uploaded") {
+      return [...videos].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    if (activeChip === "Trending") {
+      return [...videos].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
     }
 
     const lowered = activeChip.toLowerCase();
-    const matches = videos.filter((video) =>
-      [video.title, video.description, video.ownerDetails?.username, video.owner?.username]
+    const matches = videos.filter((v) =>
+      [v.title, v.description, v.ownerDetails?.username, v.owner?.username]
         .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(lowered))
+        .some((val) => val.toLowerCase().includes(lowered))
     );
 
     return matches.length ? matches : videos;
   }, [activeChip, query, videos]);
 
   if (authLoading) {
-    return (
-      <div className="yt-surface p-10 text-white">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-red-500" />
-          <div>
-            <p className="font-medium">Preparing your feed</p>
-            <p className="mt-1 text-sm text-white/45">Checking the session and pulling the latest published videos.</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <FeedSkeleton />;
   }
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="space-y-0 text-white">
+      {/* Category chips - sticky below header */}
       <div className="sticky top-14 z-20 -mx-4 border-b border-white/10 bg-[#0f0f0f]/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {recommendationChips.map((chip) => (
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          {CHIPS.map((chip) => (
             <button
               className={`yt-chip whitespace-nowrap ${chip === activeChip ? "yt-chip-active" : ""}`}
               key={chip}
@@ -175,65 +176,59 @@ const FeedExperiencePage = () => {
         </div>
       </div>
 
-      {query || activeSectionMeta ? (
-        <section className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
-            {query ? "Search" : activeSectionMeta.eyebrow}
-          </p>
-          <h1 className="text-[2rem] font-semibold tracking-[-0.04em] text-white">
-            {query ? `Results for "${query}"` : activeSectionMeta.title}
-          </h1>
-          {!query ? (
-            <p className="max-w-3xl text-sm text-white/48">{activeSectionMeta.description}</p>
-          ) : null}
-        </section>
+      {sectionTitle ? (
+        <div className="pt-6 pb-2">
+          <h1 className="text-2xl font-semibold text-white">{sectionTitle}</h1>
+        </div>
       ) : null}
 
       {loading ? (
-        <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div className="space-y-3" key={index}>
-              <div className="aspect-video animate-pulse rounded-2xl bg-[#202020]" />
-              <div className="grid grid-cols-[40px,1fr] gap-3">
-                <div className="h-10 w-10 animate-pulse rounded-full bg-[#202020]" />
-                <div className="space-y-2">
-                  <div className="h-4 animate-pulse rounded bg-[#202020]" />
-                  <div className="h-3 w-2/3 animate-pulse rounded bg-[#202020]" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <FeedSkeleton />
       ) : error ? (
         <EmptyState
           action={
-            <Link className="gradient-button" to="/feed">
-              Retry feed
-            </Link>
+            <button className="gradient-button" onClick={() => loadVideos(1, false)} type="button">
+              Retry
+            </button>
           }
           description={error}
           title="Could not load the feed"
         />
       ) : filteredVideos.length ? (
-        <section>
-          <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <>
+          <div className="grid gap-x-4 gap-y-10 pt-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredVideos.map((video) => (
               <VideoCard key={video._id} video={video} />
             ))}
           </div>
-        </section>
+
+          {/* Infinite scroll trigger */}
+          <div ref={loaderRef} className="py-4">
+            {loadingMore ? (
+              <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div className="space-y-3" key={i}>
+                    <div className="aspect-video animate-pulse rounded-xl bg-[#202020]" />
+                    <div className="grid grid-cols-[40px,1fr] gap-3">
+                      <div className="h-9 w-9 animate-pulse rounded-full bg-[#202020]" />
+                      <div className="space-y-2">
+                        <div className="h-4 animate-pulse rounded bg-[#202020]" />
+                        <div className="h-3 w-2/3 animate-pulse rounded bg-[#202020]" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </>
       ) : (
         <EmptyState
           action={
             user ? (
-              <div className="flex flex-wrap gap-3">
-                <Link className="gradient-button" to="/upload">
-                  Upload your first video
-                </Link>
-                <Link className="alt-button" to="/settings">
-                  Open settings
-                </Link>
-              </div>
+              <Link className="gradient-button" to="/upload">
+                Upload your first video
+              </Link>
             ) : (
               <div className="flex flex-wrap gap-3">
                 <Link className="gradient-button" to="/register">
@@ -245,12 +240,30 @@ const FeedExperiencePage = () => {
               </div>
             )
           }
-          description="No published videos are showing up yet. Upload something and publish it to populate the home feed."
+          description="No published videos are showing up yet."
           title="Your feed is empty"
         />
       )}
     </div>
   );
 };
+
+const FeedSkeleton = () => (
+  <div className="grid gap-x-4 gap-y-10 pt-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    {Array.from({ length: 12 }).map((_, i) => (
+      <div className="space-y-3" key={i}>
+        <div className="aspect-video animate-pulse rounded-xl bg-[#202020]" />
+        <div className="grid grid-cols-[40px,1fr] gap-3">
+          <div className="h-9 w-9 animate-pulse rounded-full bg-[#202020]" />
+          <div className="space-y-2">
+            <div className="h-4 animate-pulse rounded bg-[#202020]" />
+            <div className="h-3 w-2/3 animate-pulse rounded bg-[#202020]" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-[#202020]" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default FeedExperiencePage;

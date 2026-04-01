@@ -33,4 +33,9 @@ likeSchema.path("likedBy").validate(
     "A like must reference exactly one of video, comment, or tweet"
 );
 
+likeSchema.index({ video: 1, likedBy: 1 }, { unique: true, sparse: true });
+likeSchema.index({ comment: 1, likedBy: 1 }, { unique: true, sparse: true });
+likeSchema.index({ tweet: 1, likedBy: 1 }, { unique: true, sparse: true });
+likeSchema.index({ likedBy: 1, video: 1 });
+
 export const Like = mongoose.model("Like", likeSchema);
