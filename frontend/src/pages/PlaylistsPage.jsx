@@ -13,182 +13,132 @@ const PlaylistsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-  });
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", description: "" });
 
   const loadPlaylists = async () => {
-    if (!user?._id) {
-      setPlaylists([]);
-      setBusy(false);
-      return;
-    }
-
+    if (!user?._id) { setPlaylists([]); setBusy(false); return; }
     setBusy(true);
     setError("");
-
     try {
       const response = await apiRequest(`/api/v1/playlists/user/${user._id}`);
       setPlaylists(response?.data || []);
-    } catch (requestError) {
-      setError(requestError.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
   };
 
-  useEffect(() => {
-    loadPlaylists();
-  }, [user?._id]);
+  useEffect(() => { loadPlaylists(); }, [user?._id]);
 
   if (loading) {
     return (
-      <div className="glass-panel flex items-center gap-4 p-8">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-red-500" />
-        <div>
-          <p className="font-semibold text-white">Loading playlists</p>
-          <p className="text-sm text-white/45">Opening your saved video collections.</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#272727] border-t-[#f1f1f1]" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthGate
-        description="Playlists are part of your personal library, so this page opens after sign-in."
-        title="Sign in to manage playlists"
-      />
-    );
+    return <AuthGate description="Sign in to manage your playlists." title="Sign in to view playlists" />;
   }
 
   return (
-    <div className="space-y-6 text-white">
-      <section className="grid gap-6 xl:grid-cols-[360px,minmax(0,1fr)]">
-        <div className="rounded-[28px] border border-white/10 bg-[#181818] p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Create playlist</p>
-          <h1 className="mt-3 text-[2rem] font-semibold tracking-[-0.05em] text-white">Build a video collection</h1>
-          <p className="mt-3 text-sm leading-7 text-white/48">
-            Create themed playlists the same way a YouTube-style library does, then fill them from watch pages and your studio uploads.
-          </p>
+    <div className="space-y-6 text-[#f1f1f1]">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-[#f1f1f1]">Playlists</h1>
+        <button
+          className="alt-button"
+          onClick={() => setShowCreate((v) => !v)}
+          type="button"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New playlist
+        </button>
+      </div>
 
-          {message ? (
-            <div className="mt-5 rounded-[20px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-              {message}
-            </div>
-          ) : null}
-
+      {/* Create form */}
+      {showCreate && (
+        <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-5">
+          <h2 className="mb-4 text-base font-medium text-[#f1f1f1]">Create playlist</h2>
+          {message && <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">{message}</div>}
+          {error && <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
           <form
-            className="mt-6 grid gap-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
               setSubmitting(true);
-              setError("");
-              setMessage("");
-
+              setError(""); setMessage("");
               try {
-                await apiRequest("/api/v1/playlists", {
-                  method: "POST",
-                  body: form,
-                });
+                await apiRequest("/api/v1/playlists", { method: "POST", body: form });
                 setForm({ name: "", description: "" });
-                setMessage("Playlist created successfully.");
+                setMessage("Playlist created.");
+                setShowCreate(false);
                 await loadPlaylists();
-              } catch (requestError) {
-                setError(requestError.message);
-              } finally {
-                setSubmitting(false);
-              }
+              } catch (err) { setError(err.message); }
+              finally { setSubmitting(false); }
             }}
           >
-            <input
-              className="input-shell"
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Playlist name"
-              value={form.name}
-            />
-            <textarea
-              className="input-shell min-h-28 resize-none py-4"
-              onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-              placeholder="Describe what belongs in this playlist"
-              value={form.description}
-            />
-            <button className="gradient-button justify-center" disabled={submitting} type="submit">
-              {submitting ? "Creating..." : "Create playlist"}
-            </button>
-          </form>
-
-          {error ? (
-            <div className="mt-5 rounded-[20px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              {error}
+            <div>
+              <label className="mb-1.5 block text-sm text-[#aaaaaa]">Name (required)</label>
+              <input className="input-shell" onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))} placeholder="Playlist name" required value={form.name} />
             </div>
-          ) : null}
+            <div>
+              <label className="mb-1.5 block text-sm text-[#aaaaaa]">Description</label>
+              <textarea className="input-shell min-h-[80px] resize-none" onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} placeholder="Description (optional)" value={form.description} />
+            </div>
+            <div className="flex gap-2">
+              <button className="alt-button" disabled={submitting} type="submit">{submitting ? "Creating..." : "Create"}</button>
+              <button className="ghost-button" onClick={() => setShowCreate(false)} type="button">Cancel</button>
+            </div>
+          </form>
         </div>
-
-        <div className="rounded-[28px] border border-white/10 bg-[#181818] p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Overview</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Your playlists</h2>
-          <p className="mt-3 text-sm leading-7 text-white/48">
-            Distinct playlist cards with their own detail pages, instead of reusing the same feed surface everywhere.
-          </p>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {[
-              { label: "Playlists", value: playlists.length },
-              { label: "Saved videos", value: playlists.reduce((total, playlist) => total + (playlist.totalVideos || 0), 0) },
-              { label: "Total views", value: playlists.reduce((total, playlist) => total + (playlist.totalViews || 0), 0) },
-            ].map((item) => (
-              <div className="rounded-[22px] border border-white/10 bg-[#121212] p-4" key={item.label}>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-white/35">{item.label}</p>
-                <p className="mt-3 text-3xl font-semibold text-white">{formatCount(item.value)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      )}
 
       {busy ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div className="h-64 animate-pulse rounded-[24px] bg-[#1b1b1b]" key={index} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="animate-pulse rounded-xl bg-[#272727]" key={i} style={{ height: 220 }} />
           ))}
         </div>
       ) : playlists.length ? (
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {playlists.map((playlist) => (
             <Link
-              className="group overflow-hidden rounded-[26px] border border-white/10 bg-[#181818] transition hover:border-white/20 hover:bg-[#1c1c1c]"
+              className="group overflow-hidden rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] hover:border-[rgba(255,255,255,0.2)]"
               key={playlist._id}
               to={`/playlists/${playlist._id}`}
             >
-              <div className="aspect-[16/10] bg-[linear-gradient(135deg,#1d1d1d_0%,#281414_100%)] p-5">
+              {/* Thumbnail mosaic */}
+              <div className="aspect-video bg-gradient-to-br from-[#272727] to-[#1a1a1a] p-4">
                 <div className="flex h-full flex-col justify-between">
-                  <div className="inline-flex rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
-                    Playlist
+                  <div className="flex items-center gap-2">
+                    <svg className="h-5 w-5 text-[#aaaaaa]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01" />
+                    </svg>
+                    <span className="text-xs text-[#aaaaaa]">Playlist</span>
                   </div>
                   <div>
-                    <p className="text-sm text-white/45">{formatCount(playlist.totalVideos)} videos</p>
-                    <h3 className="mt-3 line-clamp-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-                      {playlist.name}
-                    </h3>
+                    <p className="text-sm text-[#aaaaaa]">{formatCount(playlist.totalVideos)} videos</p>
                   </div>
                 </div>
               </div>
-
-              <div className="p-5">
-                <p className="line-clamp-3 text-sm leading-7 text-white/50">{playlist.description}</p>
-                <div className="mt-4 flex items-center justify-between text-xs text-white/38">
-                  <span>{formatCount(playlist.totalViews)} views</span>
-                  <span>Updated {formatTimeAgo(playlist.updatedAt)}</span>
-                </div>
+              <div className="p-3">
+                <p className="line-clamp-1 text-sm font-medium text-[#f1f1f1]">{playlist.name}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-[#aaaaaa]">{playlist.description}</p>
+                <p className="mt-2 text-xs text-[#aaaaaa]">Updated {formatTimeAgo(playlist.updatedAt)}</p>
               </div>
             </Link>
           ))}
-        </section>
+        </div>
       ) : (
         <EmptyState
-          description="Create the first playlist to start building a more complete library experience."
+          description="Create a playlist to organise videos you want to watch."
           title="No playlists yet"
+          action={<button className="alt-button" onClick={() => setShowCreate(true)} type="button">Create playlist</button>}
         />
       )}
     </div>

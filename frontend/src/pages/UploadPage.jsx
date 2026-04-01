@@ -7,16 +7,8 @@ import { useAuth } from "../state/AuthContext.jsx";
 
 const readUploadPayload = async (response) => {
   const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text };
-  }
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return { message: text }; }
 };
 
 const uploadAssetDirectToCloudinary = async ({ file, resourceType, signaturePayload }) => {
@@ -25,27 +17,14 @@ const uploadAssetDirectToCloudinary = async ({ file, resourceType, signaturePayl
   formData.append("api_key", signaturePayload.apiKey);
   formData.append("timestamp", String(signaturePayload.timestamp));
   formData.append("signature", signaturePayload.signature);
-
-  if (signaturePayload.folder) {
-    formData.append("folder", signaturePayload.folder);
-  }
+  if (signaturePayload.folder) formData.append("folder", signaturePayload.folder);
 
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/${resourceType}/upload`,
-    {
-      method: "POST",
-      body: formData,
-    }
+    { method: "POST", body: formData }
   );
-
   const payload = await readUploadPayload(response);
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.error?.message || payload?.message || `Cloudinary ${resourceType} upload failed`
-    );
-  }
-
+  if (!response.ok) throw new Error(payload?.error?.message || payload?.message || `Cloudinary ${resourceType} upload failed`);
   return payload;
 };
 
@@ -62,328 +41,209 @@ const UploadPage = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [uploadStep, setUploadStep] = useState("form"); // "form" | "uploading"
 
   useEffect(() => {
-    if (!thumbnailFile) {
-      setThumbnailPreview("");
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(thumbnailFile);
-    setThumbnailPreview(previewUrl);
-
-    return () => {
-      URL.revokeObjectURL(previewUrl);
-    };
+    if (!thumbnailFile) { setThumbnailPreview(""); return; }
+    const url = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreview(url);
+    return () => URL.revokeObjectURL(url);
   }, [thumbnailFile]);
 
   const primaryButtonLabel = useMemo(
-    () => (visibility === "public" ? "Upload and publish" : "Save as draft"),
+    () => (visibility === "public" ? "Publish" : "Save as private"),
     [visibility]
   );
 
-  const ensureFileIsReadable = async (file, label) => {
-    if (!file) {
-      throw new Error(`${label} is required.`);
-    }
-
-    try {
-      await file.slice(0, 1).arrayBuffer();
-    } catch {
-      throw new Error(
-        `${label} is no longer available. If it was moved or deleted from a temp or downloads folder, please select it again.`
-      );
-    }
-  };
-
   if (loading) {
     return (
-      <div className="glass-panel flex items-center gap-4 p-8">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-[#ff2d2d]" />
-        <div>
-          <p className="font-semibold text-white">Opening upload workspace</p>
-          <p className="text-sm text-white/45">Checking your session before preparing the upload form.</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#272727] border-t-[#f1f1f1]" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthGate
-        description="Uploading is protected because it uses the real video publish endpoint with multipart files."
-        title="Sign in to upload videos"
-      />
-    );
+    return <AuthGate description="Sign in to upload videos." title="Sign in to upload" />;
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[220px,minmax(0,1fr)]">
+    <div className="flex gap-6">
       <StudioSidebar active="upload" user={user} />
 
-      <section className="space-y-6">
-        <div className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#181818] p-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-300/75">Upload</p>
-            <h1 className="mt-3 text-[2rem] font-semibold tracking-[-0.04em] text-white md:text-[2.5rem]">
-              Publish a new video
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/48">
-              This page follows the real backend flow: upload a video file, add a thumbnail, and choose whether it should stay private or go live right away.
-            </p>
-          </div>
-          <Link className="alt-button w-fit" to="/studio">
-            Back to dashboard
-          </Link>
+      <div className="min-w-0 flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-[#f1f1f1]">Upload video</h1>
+          <Link className="alt-button" to="/studio">Back to Studio</Link>
         </div>
 
-        {message ? (
-          <div className="rounded-[22px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            {message}
-          </div>
-        ) : null}
+        {message && (
+          <div className="rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">{message}</div>
+        )}
+        {error && (
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        )}
 
-        {error ? (
-          <div className="rounded-[22px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-            {error}
-          </div>
-        ) : null}
-
-        <div className="rounded-[28px] border border-white/10 bg-[#181818] p-6 md:p-8">
-          <form
-            className="space-y-7"
-            ref={formRef}
-            onSubmit={async (event) => {
-              event.preventDefault();
-
-              if (!videoFile || !thumbnailFile) {
-                setError("Please choose both a video file and a thumbnail.");
-                return;
-              }
-
-              setSubmitting(true);
-              setError("");
-              setMessage("");
-
-              try {
-                await ensureFileIsReadable(videoFile, "Video file");
-                await ensureFileIsReadable(thumbnailFile, "Thumbnail file");
-                const signatureResponse = await apiRequest("/api/v1/videos/direct-upload-signature", {
-                  method: "POST",
-                });
-                const signaturePayload = signatureResponse?.data;
-
-                const videoAsset = await uploadAssetDirectToCloudinary({
-                  file: videoFile,
-                  resourceType: "video",
-                  signaturePayload,
-                });
-
-                const thumbnailAsset = await uploadAssetDirectToCloudinary({
-                  file: thumbnailFile,
-                  resourceType: "image",
-                  signaturePayload,
-                });
-
-                await apiRequest("/api/v1/videos/direct", {
-                  method: "POST",
-                  body: {
-                    title,
-                    description,
-                    visibility,
-                    videoAsset,
-                    thumbnailAsset,
-                  },
-                });
-
-                formRef.current?.reset();
-                setTitle("");
-                setDescription("");
-                setVisibility("private");
-                setVideoFile(null);
-                setThumbnailFile(null);
-                setThumbnailPreview("");
-                setMessage(
-                  visibility === "public"
-                    ? "Video uploaded and published successfully."
-                    : "Video uploaded successfully and saved as a draft."
-                );
-              } catch (requestError) {
-                if (requestError?.message === "Failed to fetch") {
-                  setError(
-                    "The upload request failed at the network level. Select the file again and try once more. If the problem continues, the Cloudinary upload or backend signature request may be failing."
-                  );
-                } else {
-                  setError(requestError.message);
-                }
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-          >
-            <div className="rounded-[24px] border-2 border-dashed border-white/10 bg-[#121212] p-8 text-center transition hover:border-white/20">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#1a1a1a]">
-                <svg className="h-7 w-7 text-white/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <path d="M17 8l-5-5-5 5" />
-                  <path d="M12 3v12" />
+        <form
+          ref={formRef}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!videoFile || !thumbnailFile) { setError("Please select both a video file and a thumbnail."); return; }
+            setSubmitting(true);
+            setError("");
+            setMessage("");
+            setUploadStep("uploading");
+            try {
+              const signatureResponse = await apiRequest("/api/v1/videos/direct-upload-signature", { method: "POST" });
+              const signaturePayload = signatureResponse?.data;
+              const videoAsset = await uploadAssetDirectToCloudinary({ file: videoFile, resourceType: "video", signaturePayload });
+              const thumbnailAsset = await uploadAssetDirectToCloudinary({ file: thumbnailFile, resourceType: "image", signaturePayload });
+              await apiRequest("/api/v1/videos/direct", { method: "POST", body: { title, description, visibility, videoAsset, thumbnailAsset } });
+              formRef.current?.reset();
+              setTitle(""); setDescription(""); setVisibility("private");
+              setVideoFile(null); setThumbnailFile(null); setThumbnailPreview("");
+              setMessage(visibility === "public" ? "Video uploaded and published successfully." : "Video saved as private.");
+              setUploadStep("form");
+            } catch (err) {
+              setError(err.message);
+              setUploadStep("form");
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          {/* Drop zone */}
+          {!videoFile ? (
+            <div className="rounded-xl border-2 border-dashed border-[rgba(255,255,255,0.2)] bg-[#212121] p-12 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#272727]">
+                <svg className="h-8 w-8 text-[#aaaaaa]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                 </svg>
               </div>
-              <h2 className="mt-5 text-lg font-semibold text-white">Drag and drop video files to upload</h2>
-              <p className="mt-2 text-sm text-white/42">
-                MP4, MOV, AVI and more. Videos stay private until you publish them.
-              </p>
-              <label className="mt-5 inline-flex cursor-pointer items-center rounded-full bg-[#ff2d2d] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90">
-                Select video file
-                <input
-                  accept="video/*"
-                  className="hidden"
-                  name="videoFile"
-                  onChange={(event) => setVideoFile(event.target.files?.[0] || null)}
-                  required
-                  type="file"
-                />
+              <h2 className="mt-4 text-base font-medium text-[#f1f1f1]">Drag and drop video files to upload</h2>
+              <p className="mt-2 text-sm text-[#aaaaaa]">Your videos will be private until you publish them.</p>
+              <label className="mt-6 inline-flex cursor-pointer items-center rounded-full bg-[#3ea6ff] px-6 py-2.5 text-sm font-medium text-black hover:bg-[#5bb8ff]">
+                Select files
+                <input accept="video/*" className="hidden" onChange={(e) => setVideoFile(e.target.files?.[0] || null)} type="file" />
               </label>
-              <p className="mt-4 text-sm text-white/60">
-                {videoFile ? videoFile.name : "No video selected yet"}
-              </p>
-              <p className="mt-2 text-xs text-white/38">
-                Do not move or delete the selected source file until the upload has finished.
-              </p>
             </div>
-
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),320px]">
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
+              {/* Left: form fields */}
               <div className="space-y-5">
-                <div>
-                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.24em] text-white/38">
-                    Title
-                  </label>
-                  <input
-                    className="input-shell"
-                    maxLength={120}
-                    onChange={(event) => setTitle(event.target.value)}
-                    placeholder="Add a clear, searchable title"
-                    required
-                    value={title}
-                  />
+                {/* Video selected indicator */}
+                <div className="flex items-center gap-3 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] px-4 py-3">
+                  <svg className="h-5 w-5 flex-shrink-0 text-[#3ea6ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" />
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-[#f1f1f1]">{videoFile.name}</p>
+                    <p className="text-xs text-[#aaaaaa]">{(videoFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                  </div>
+                  <button className="text-xs text-[#aaaaaa] hover:text-[#f1f1f1]" onClick={() => setVideoFile(null)} type="button">Remove</button>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.24em] text-white/38">
-                    Description
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-[#f1f1f1]">Title (required)</label>
+                  <input
+                    className="input-shell"
+                    maxLength={100}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Add a title that describes your video"
+                    required
+                    value={title}
+                  />
+                  <p className="mt-1 text-right text-xs text-[#aaaaaa]">{title.length}/100</p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[#f1f1f1]">Description</label>
                   <textarea
-                    className="input-shell min-h-32"
-                    onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Tell viewers what this video is about"
+                    className="input-shell min-h-[120px] resize-none"
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Tell viewers about your video"
                     required
                     value={description}
                   />
                 </div>
 
+                {/* Visibility */}
                 <div>
-                  <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-white/38">
-                    Visibility
-                  </label>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <label className="mb-3 block text-sm font-medium text-[#f1f1f1]">Visibility</label>
+                  <div className="space-y-2">
                     {[
-                      {
-                        id: "private",
-                        title: "Private",
-                        description: "Only you can open this video until you publish it later.",
-                      },
-                      {
-                        id: "public",
-                        title: "Public",
-                        description: "Publish immediately after upload so it can appear in the feed.",
-                      },
-                    ].map((option) => {
-                      const selected = visibility === option.id;
-
-                      return (
-                        <button
-                          className={`rounded-[20px] border p-4 text-left transition ${
-                            selected
-                              ? "border-[#ff2d2d] bg-[#1a0000]"
-                              : "border-white/10 bg-[#121212] hover:border-white/20"
-                          }`}
-                          key={option.id}
-                          onClick={() => setVisibility(option.id)}
-                          type="button"
-                        >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className={`mt-1 flex h-4 w-4 items-center justify-center rounded-full border ${
-                                selected ? "border-[#ff2d2d]" : "border-white/30"
-                              }`}
-                            >
-                              {selected ? <span className="h-2 w-2 rounded-full bg-[#ff2d2d]" /> : null}
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold text-white">{option.title}</p>
-                              <p className="mt-1 text-xs leading-6 text-white/45">{option.description}</p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                      { id: "private", label: "Private", desc: "Only you can watch your video" },
+                      { id: "public", label: "Public", desc: "Everyone can watch your video" },
+                    ].map((opt) => (
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${visibility === opt.id ? "border-[#3ea6ff] bg-[#263850]" : "border-[rgba(255,255,255,0.1)] bg-[#212121] hover:border-[rgba(255,255,255,0.2)]"}`}
+                        key={opt.id}
+                      >
+                        <input
+                          checked={visibility === opt.id}
+                          className="mt-0.5 accent-[#3ea6ff]"
+                          onChange={() => setVisibility(opt.id)}
+                          type="radio"
+                          value={opt.id}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-[#f1f1f1]">{opt.label}</p>
+                          <p className="text-xs text-[#aaaaaa]">{opt.desc}</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-white/10 bg-[#121212] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/38">
-                  Thumbnail
-                </p>
-                <label className="mt-4 flex cursor-pointer flex-col gap-4">
-                  <div className="aspect-video overflow-hidden rounded-2xl border border-dashed border-white/10 bg-[#181818]">
+              {/* Right: thumbnail */}
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-[#f1f1f1]">Thumbnail</label>
+                  <p className="mb-3 text-xs text-[#aaaaaa]">Upload a picture that shows what's in your video.</p>
+                  <div className="aspect-video overflow-hidden rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#272727]">
                     {thumbnailPreview ? (
                       <img alt="Thumbnail preview" className="h-full w-full object-cover" src={thumbnailPreview} />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-white/35">
-                        Thumbnail preview
+                      <div className="flex h-full flex-col items-center justify-center gap-2 text-[#aaaaaa]">
+                        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+                        </svg>
+                        <span className="text-xs">Upload thumbnail</span>
                       </div>
                     )}
                   </div>
-                  <input
-                    accept="image/*"
-                    className="hidden"
-                    name="thumbnail"
-                    onChange={(event) => setThumbnailFile(event.target.files?.[0] || null)}
-                    required
-                    type="file"
-                  />
-                  <span className="inline-flex w-fit items-center rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/5">
-                    Choose image
-                  </span>
-                </label>
-                <p className="mt-3 text-sm text-white/58">
-                  {thumbnailFile ? thumbnailFile.name : "PNG, JPG, WEBP recommended"}
-                </p>
-                <div className="mt-4 text-xs leading-6 text-white/38">
-                  Recommended size: 1280 x 720
-                  <br />
-                  Keep text bold and readable in smaller previews.
+                  <label className="mt-3 inline-flex cursor-pointer items-center rounded-full border border-[rgba(255,255,255,0.2)] px-4 py-2 text-sm text-[#f1f1f1] hover:bg-[#272727]">
+                    {thumbnailFile ? "Change thumbnail" : "Upload thumbnail"}
+                    <input accept="image/*" className="hidden" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} required type="file" />
+                  </label>
+                  {thumbnailFile && <p className="mt-1 text-xs text-[#aaaaaa]">{thumbnailFile.name}</p>}
                 </div>
+
+                {/* Upload progress indicator */}
+                {submitting && (
+                  <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#272727] border-t-[#3ea6ff]" />
+                      <p className="text-sm text-[#f1f1f1]">Uploading to Cloudinary...</p>
+                    </div>
+                    <p className="mt-2 text-xs text-[#aaaaaa]">Do not close this page until the upload completes.</p>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-white/10 pt-5">
-              <button
-                className="alt-button"
-                disabled={submitting}
-                onClick={() => navigate("/studio")}
-                type="button"
-              >
-                Cancel
-              </button>
+          {videoFile && (
+            <div className="flex items-center justify-end gap-3 border-t border-[rgba(255,255,255,0.1)] pt-4">
+              <button className="alt-button" disabled={submitting} onClick={() => navigate("/studio")} type="button">Cancel</button>
               <button className="gradient-button" disabled={submitting} type="submit">
                 {submitting ? "Uploading..." : primaryButtonLabel}
               </button>
             </div>
-          </form>
-        </div>
-      </section>
+          )}
+        </form>
+      </div>
     </div>
   );
 };

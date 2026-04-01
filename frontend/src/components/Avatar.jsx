@@ -1,21 +1,22 @@
 import { initialsFromName } from "../lib/utils.js";
 
-const Avatar = ({ src, name, className = "h-11 w-11 rounded-2xl" }) => {
+const COLORS = [
+  "bg-[#1565c0]", "bg-[#6a1b9a]", "bg-[#ad1457]",
+  "bg-[#00695c]", "bg-[#e65100]", "bg-[#4527a0]",
+];
+
+const Avatar = ({ src, name, className = "h-9 w-9 rounded-full" }) => {
   if (src) {
-    return (
-      <img
-        alt={name || "avatar"}
-        className={`${className} object-cover`}
-        src={src}
-      />
-    );
+    return <img alt={name || "avatar"} className={`${className} object-cover`} src={src} />;
   }
 
+  const initials = initialsFromName(name);
+  const colorIndex = name ? name.charCodeAt(0) % COLORS.length : 0;
+  const color = COLORS[colorIndex];
+
   return (
-    <div
-      className={`${className} grid place-items-center border border-white/10 bg-gradient-to-br from-[#ff2d2d] to-[#7a1515] font-semibold text-white`}
-    >
-      {initialsFromName(name)}
+    <div className={`${className} ${color} grid place-items-center text-xs font-medium text-white`}>
+      {initials}
     </div>
   );
 };

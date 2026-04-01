@@ -4,7 +4,7 @@ import AuthGate from "../components/AuthGate.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import VideoCard from "../components/VideoCard.jsx";
 import { apiRequest } from "../lib/api.js";
-import { formatCount, formatTimeAgo } from "../lib/utils.js";
+import { formatCount } from "../lib/utils.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const HistoryPage = () => {
@@ -12,169 +12,116 @@ const HistoryPage = () => {
   const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!user) {
-      setHistory([]);
-      setBusy(false);
-      return;
-    }
-
+    if (!user) { setHistory([]); setBusy(false); return; }
     let cancelled = false;
-
-    const loadHistory = async () => {
-      setBusy(true);
-      setError("");
-
-      try {
-        const response = await apiRequest("/api/v1/users/watch-history");
-
-        if (!cancelled) {
-          setHistory(response?.data || []);
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setBusy(false);
-        }
-      }
-    };
-
-    loadHistory();
-
-    return () => {
-      cancelled = true;
-    };
+    setBusy(true);
+    setError("");
+    apiRequest("/api/v1/users/watch-history")
+      .then((r) => { if (!cancelled) setHistory(r?.data || []); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setBusy(false); });
+    return () => { cancelled = true; };
   }, [user]);
 
-  const latestVideo = history[0] || null;
-  const groupedHistory = useMemo(() => history.slice(1), [history]);
+  const filteredHistory = useMemo(() => {
+    if (!searchQuery.trim()) return history;
+    const q = searchQuery.toLowerCase();
+    return history.filter((v) =>
+      v.title?.toLowerCase().includes(q) ||
+      (v.owner?.fullName || v.owner?.username || "").toLowerCase().includes(q)
+    );
+  }, [history, searchQuery]);
 
   if (loading) {
     return (
-      <div className="glass-panel flex items-center gap-4 p-8">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-red-500" />
-        <div>
-          <p className="font-semibold text-white">Loading history</p>
-          <p className="text-sm text-white/45">Pulling your recently watched videos.</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#272727] border-t-[#f1f1f1]" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthGate
-        description="Watch history belongs to your account, so this page is available after sign-in."
-        title="Sign in to view history"
-      />
-    );
+    return <AuthGate description="Sign in to see your watch history." title="Sign in to view history" />;
   }
 
   if (busy) {
     return (
-      <div className="space-y-6">
-        <div className="aspect-[2.2/1] animate-pulse rounded-[28px] bg-[#1b1b1b]" />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div className="h-60 animate-pulse rounded-[24px] bg-[#1b1b1b]" key={index} />
-          ))}
-        </div>
+      <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div className="space-y-3" key={i}>
+            <div className="aspect-video animate-pulse rounded-xl bg-[#272727]" />
+            <div className="flex gap-3">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#272727]" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 animate-pulse rounded bg-[#272727]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#272727]" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
-    return (
-      <EmptyState
-        action={
-          <button className="gradient-button" onClick={() => window.location.reload()} type="button">
-            Retry
-          </button>
-        }
-        description={error}
-        title="Could not load history"
-      />
-    );
+    return <EmptyState action={<button className="alt-button" onClick={() => window.location.reload()} type="button">Retry</button>} description={error} title="Could not load history" />;
   }
 
   if (!history.length) {
     return (
       <EmptyState
-        action={
-          <Link className="gradient-button" to="/feed">
-            Start watching
-          </Link>
-        }
-        description="Once you watch videos, they will appear here in a more YouTube-like history layout."
-        title="No watch history yet"
+        action={<Link className="alt-button" to="/feed">Start watching</Link>}
+        description="Videos you watch will appear here."
+        title="No watch history"
       />
     );
   }
 
-  const latestThumbnail = latestVideo?.thumbnail?.url || latestVideo?.thumbnail;
-
   return (
-    <div className="space-y-8 text-white">
-      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[#181818]">
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1.15fr),380px]">
-          <Link className="block bg-black" to={`/watch/${latestVideo._id}`}>
-            <div className="aspect-video">
-              {latestThumbnail ? (
-                <img alt={latestVideo.title} className="h-full w-full object-cover" src={latestThumbnail} />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-white/35">No thumbnail</div>
-              )}
-            </div>
-          </Link>
+    <div className="grid gap-6 text-[#f1f1f1] lg:grid-cols-[minmax(0,1fr),320px]">
+      {/* Main: video grid */}
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold text-[#f1f1f1]">Watch history</h1>
 
-          <div className="flex flex-col justify-between p-6 md:p-7">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">History</p>
-              <h1 className="mt-3 text-[2.1rem] font-semibold tracking-[-0.05em] text-white">
-                Continue from where you left off
-              </h1>
-              <p className="mt-3 text-sm leading-7 text-white/48">
-                Your latest session stays pinned here, with the rest of your watch history arranged underneath.
-              </p>
-            </div>
+        <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredHistory.map((video) => (
+            <VideoCard key={video._id} video={video} />
+          ))}
+        </div>
 
-            <div className="mt-8 rounded-[24px] border border-white/10 bg-[#121212] p-5">
-              <p className="line-clamp-2 text-lg font-semibold text-white">{latestVideo.title}</p>
-              <p className="mt-2 text-sm text-white/45">
-                {latestVideo.owner?.fullName || latestVideo.owner?.username || "VideoTube creator"}
-              </p>
-              <p className="mt-2 text-xs text-white/38">
-                {formatCount(history.length)} videos in history | last watched {formatTimeAgo(latestVideo.createdAt)}
-              </p>
-              <Link className="gradient-button mt-5 justify-center !px-4 !py-2 text-sm" to={`/watch/${latestVideo._id}`}>
-                Resume watching
-              </Link>
-            </div>
+        {filteredHistory.length === 0 && searchQuery && (
+          <EmptyState description={`No results for "${searchQuery}"`} title="No matches" />
+        )}
+      </div>
+
+      {/* Right: search + manage */}
+      <aside className="space-y-4">
+        <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4">
+          <h2 className="mb-3 text-sm font-medium text-[#f1f1f1]">Search history</h2>
+          <div className="flex overflow-hidden rounded-full border border-[rgba(255,255,255,0.1)] bg-[#272727]">
+            <input
+              className="w-full bg-transparent px-4 py-2 text-sm text-[#f1f1f1] outline-none placeholder:text-[#aaaaaa]"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search watch history"
+              value={searchQuery}
+            />
+            {searchQuery && (
+              <button className="px-3 text-[#aaaaaa] hover:text-[#f1f1f1]" onClick={() => setSearchQuery("")} type="button">✕</button>
+            )}
           </div>
         </div>
-      </section>
 
-      <section className="space-y-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Recently watched</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Your history shelf</h2>
+        <div className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4">
+          <h2 className="mb-3 text-sm font-medium text-[#f1f1f1]">Manage history</h2>
+          <div className="space-y-2 text-sm text-[#aaaaaa]">
+            <p>{formatCount(history.length)} videos in history</p>
+            <p className="text-xs">History is stored on your account and helps improve recommendations.</p>
           </div>
-          <p className="text-sm text-white/40">{formatCount(history.length)} total videos</p>
         </div>
-
-        <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {groupedHistory.length ? (
-            groupedHistory.map((video) => <VideoCard key={video._id} video={video} />)
-          ) : (
-            <VideoCard video={latestVideo} />
-          )}
-        </div>
-      </section>
+      </aside>
     </div>
   );
 };

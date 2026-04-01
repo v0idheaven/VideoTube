@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AuthGate from "../components/AuthGate.jsx";
+import Avatar from "../components/Avatar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import VideoCard from "../components/VideoCard.jsx";
 import { apiRequest } from "../lib/api.js";
-import { formatCount } from "../lib/utils.js";
+import { formatCount, formatDuration } from "../lib/utils.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const LikedVideosPage = () => {
@@ -14,76 +15,47 @@ const LikedVideosPage = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user) {
-      setVideos([]);
-      setBusy(false);
-      return;
-    }
-
+    if (!user) { setVideos([]); setBusy(false); return; }
     let cancelled = false;
-
-    const loadLikedVideos = async () => {
-      setBusy(true);
-      setError("");
-
-      try {
-        const response = await apiRequest("/api/v1/likes/videos");
-        const mappedVideos = (response?.data || [])
-          .map((item) => item.likedVideo)
-          .filter(Boolean);
-
-        if (!cancelled) {
-          setVideos(mappedVideos);
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setBusy(false);
-        }
-      }
-    };
-
-    loadLikedVideos();
-
-    return () => {
-      cancelled = true;
-    };
+    setBusy(true);
+    setError("");
+    apiRequest("/api/v1/likes/videos")
+      .then((r) => { if (!cancelled) setVideos((r?.data || []).map((i) => i.likedVideo).filter(Boolean)); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setBusy(false); });
+    return () => { cancelled = true; };
   }, [user]);
 
-  const featuredVideo = videos[0] || null;
-  const compactShelf = useMemo(() => videos.slice(0, 5), [videos]);
+  const totalDuration = useMemo(
+    () => videos.reduce((sum, v) => sum + (Number(v.duration) || 0), 0),
+    [videos]
+  );
 
   if (loading) {
     return (
-      <div className="glass-panel flex items-center gap-4 p-8">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-red-500" />
-        <div>
-          <p className="font-semibold text-white">Loading liked videos</p>
-          <p className="text-sm text-white/45">Gathering the videos you have liked.</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#272727] border-t-[#f1f1f1]" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthGate
-        description="Liked videos are stored against your account, so this page opens after sign-in."
-        title="Sign in to view liked videos"
-      />
-    );
+    return <AuthGate description="Sign in to see videos you've liked." title="Sign in to view liked videos" />;
   }
 
   if (busy) {
     return (
-      <div className="grid gap-6 xl:grid-cols-[340px,minmax(0,1fr)]">
-        <div className="h-[520px] animate-pulse rounded-[28px] bg-[#1b1b1b]" />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div className="h-60 animate-pulse rounded-[24px] bg-[#1b1b1b]" key={index} />
+      <div className="grid gap-6 lg:grid-cols-[360px,minmax(0,1fr)]">
+        <div className="h-[480px] animate-pulse rounded-xl bg-[#272727]" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="flex gap-3" key={i}>
+              <div className="h-20 w-36 animate-pulse rounded-xl bg-[#272727]" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-4 animate-pulse rounded bg-[#272727]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#272727]" />
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -91,82 +63,85 @@ const LikedVideosPage = () => {
   }
 
   if (error) {
-    return (
-      <EmptyState
-        action={
-          <button className="gradient-button" onClick={() => window.location.reload()} type="button">
-            Retry
-          </button>
-        }
-        description={error}
-        title="Could not load liked videos"
-      />
-    );
+    return <EmptyState action={<button className="alt-button" onClick={() => window.location.reload()} type="button">Retry</button>} description={error} title="Could not load liked videos" />;
   }
 
   if (!videos.length) {
     return (
       <EmptyState
-        action={
-          <Link className="gradient-button" to="/feed">
-            Browse videos
-          </Link>
-        }
-        description="Like a few videos and they will show up here as your own watch-later style library."
-        title="No liked videos yet"
+        action={<Link className="alt-button" to="/feed">Browse videos</Link>}
+        description="Videos you like will appear here."
+        title="No liked videos"
       />
     );
   }
 
-  const thumbnail = featuredVideo?.thumbnail?.url || featuredVideo?.thumbnail;
+  const firstThumb = videos[0]?.thumbnail?.url || videos[0]?.thumbnail;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[340px,minmax(0,1fr)] text-white">
-      <aside className="overflow-hidden rounded-[28px] border border-white/10 bg-[#181818]">
+    <div className="grid gap-6 text-[#f1f1f1] lg:grid-cols-[360px,minmax(0,1fr)]">
+      {/* Left panel */}
+      <aside className="overflow-hidden rounded-xl bg-[#212121]">
         <div
-          className="aspect-[0.92] bg-cover bg-center"
+          className="relative h-[240px] bg-cover bg-center"
           style={{
-            backgroundImage: thumbnail
-              ? `linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.86)), url(${thumbnail})`
-              : "linear-gradient(135deg, #161616 0%, #2b1616 100%)",
+            backgroundImage: firstThumb
+              ? `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.7)), url(${firstThumb})`
+              : "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
           }}
         >
-          <div className="flex h-full flex-col justify-end p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">Playlist style shelf</p>
-            <h1 className="mt-3 text-[2rem] font-semibold tracking-[-0.05em] text-white">Liked videos</h1>
-            <p className="mt-3 text-sm text-white/55">{user.fullName}</p>
-            <p className="mt-2 text-sm text-white/45">{formatCount(videos.length)} saved likes</p>
-
-            <div className="mt-6 space-y-2 rounded-[24px] border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
-              {compactShelf.map((video) => (
-                <Link
-                  className="block truncate text-sm text-white/82 transition hover:text-white"
-                  key={video._id}
-                  to={`/watch/${video._id}`}
-                >
-                  {video.title}
-                </Link>
-              ))}
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <h1 className="text-2xl font-bold text-white">Liked videos</h1>
+            <div className="mt-1 flex items-center gap-2">
+              <Avatar className="h-5 w-5 rounded-full" name={user.fullName} src={user.avatar} />
+              <span className="text-sm text-white/80">{user.fullName}</span>
             </div>
+          </div>
+        </div>
+        <div className="p-5">
+          <p className="text-sm text-[#aaaaaa]">{formatCount(videos.length)} videos · {formatDuration(totalDuration)}</p>
+          <div className="mt-4 flex gap-2">
+            <Link className="gradient-button flex-1 justify-center" to={`/watch/${videos[0]._id}`}>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              Play all
+            </Link>
+            <button className="alt-button" type="button">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+              </svg>
+              Shuffle
+            </button>
+          </div>
+
+          {/* Mini list */}
+          <div className="mt-4 space-y-2">
+            {videos.slice(0, 5).map((video, i) => (
+              <Link className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#272727]" key={video._id} to={`/watch/${video._id}`}>
+                <span className="w-4 flex-shrink-0 text-center text-xs text-[#aaaaaa]">{i + 1}</span>
+                <div className="h-10 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-[#272727]">
+                  {video.thumbnail?.url ? <img alt={video.title} className="h-full w-full object-cover" src={video.thumbnail.url} /> : null}
+                </div>
+                <p className="line-clamp-2 flex-1 text-xs text-[#f1f1f1]">{video.title}</p>
+              </Link>
+            ))}
+            {videos.length > 5 && (
+              <p className="px-2 text-xs text-[#aaaaaa]">+{videos.length - 5} more videos</p>
+            )}
           </div>
         </div>
       </aside>
 
-      <section className="space-y-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Library</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Videos you liked</h2>
+      {/* Right: full list */}
+      <div className="space-y-3">
+        {videos.map((video, i) => (
+          <div className="flex items-center gap-3" key={video._id}>
+            <span className="w-5 flex-shrink-0 text-center text-sm text-[#aaaaaa]">{i + 1}</span>
+            <div className="flex-1">
+              <VideoCard compact video={video} />
+            </div>
           </div>
-          <p className="text-sm text-white/40">{formatCount(videos.length)} videos</p>
-        </div>
-
-        <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
-          {videos.map((video) => (
-            <VideoCard key={video._id} video={video} />
-          ))}
-        </div>
-      </section>
+        ))}
+      </div>
     </div>
   );
 };

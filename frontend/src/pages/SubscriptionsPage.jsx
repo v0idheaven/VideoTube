@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import AuthGate from "../components/AuthGate.jsx";
 import Avatar from "../components/Avatar.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import VideoCard from "../components/VideoCard.jsx";
 import { apiRequest } from "../lib/api.js";
-import { formatCount, formatTimeAgo } from "../lib/utils.js";
+import { formatCount } from "../lib/utils.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const SubscriptionsPage = () => {
@@ -12,240 +13,138 @@ const SubscriptionsPage = () => {
   const [channels, setChannels] = useState([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-    if (!user?._id) {
-      setChannels([]);
-      setBusy(false);
-      return;
-    }
-
+    if (!user?._id) { setChannels([]); setBusy(false); return; }
     let cancelled = false;
-
-    const loadSubscriptions = async () => {
-      setBusy(true);
-      setError("");
-
-      try {
-        const response = await apiRequest(`/api/v1/subscriptions/u/${user._id}`);
-
-        if (!cancelled) {
-          setChannels((response?.data || []).map((item) => item.subscribedChannel).filter(Boolean));
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setBusy(false);
-        }
-      }
-    };
-
-    loadSubscriptions();
-
-    return () => {
-      cancelled = true;
-    };
+    setBusy(true);
+    setError("");
+    apiRequest(`/api/v1/subscriptions/u/${user._id}`)
+      .then((r) => { if (!cancelled) setChannels((r?.data || []).map((i) => i.subscribedChannel).filter(Boolean)); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setBusy(false); });
+    return () => { cancelled = true; };
   }, [user?._id]);
 
-  const featuredChannel = channels[0] || null;
-  const channelsWithUploads = useMemo(
-    () => channels.filter((channel) => channel.latestVideo),
-    [channels]
-  );
+  const channelsWithVideos = useMemo(() => channels.filter((c) => c.latestVideo), [channels]);
+
+  // Flatten all latest videos for the "Latest" tab
+  const latestVideos = useMemo(() => {
+    return channelsWithVideos.map((ch) => ({
+      ...ch.latestVideo,
+      ownerDetails: { username: ch.username, fullName: ch.fullName, avatar: ch.avatar },
+    })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [channelsWithVideos]);
 
   if (loading) {
     return (
-      <div className="glass-panel flex items-center gap-4 p-8">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-red-500" />
-        <div>
-          <p className="font-semibold text-white">Loading subscriptions</p>
-          <p className="text-sm text-white/45">Pulling subscribed channels and their latest uploads.</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#272727] border-t-[#f1f1f1]" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthGate
-        description="Subscriptions depend on your signed-in account, so this page opens after login."
-        title="Sign in to open subscriptions"
-      />
-    );
+    return <AuthGate description="Sign in to see updates from your favourite channels." title="Sign in to see subscriptions" />;
   }
 
   if (busy) {
     return (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr),360px]">
-        <div className="aspect-[2/1] animate-pulse rounded-[28px] bg-[#1b1b1b]" />
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div className="h-28 animate-pulse rounded-[24px] bg-[#1b1b1b]" key={index} />
-          ))}
-        </div>
+      <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div className="space-y-3" key={i}>
+            <div className="aspect-video animate-pulse rounded-xl bg-[#272727]" />
+            <div className="flex gap-3">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#272727]" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 animate-pulse rounded bg-[#272727]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#272727]" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
-    return (
-      <EmptyState
-        action={
-          <button className="gradient-button" onClick={() => window.location.reload()} type="button">
-            Retry
-          </button>
-        }
-        description={error}
-        title="Could not load subscriptions"
-      />
-    );
+    return <EmptyState action={<button className="alt-button" onClick={() => window.location.reload()} type="button">Retry</button>} description={error} title="Could not load subscriptions" />;
   }
 
   if (!channels.length) {
     return (
       <EmptyState
-        action={
-          <Link className="gradient-button" to="/feed">
-            Explore videos
-          </Link>
-        }
-        description="Subscribe to a few channels and their latest uploads will start showing up here."
+        action={<Link className="alt-button" to="/feed">Explore videos</Link>}
+        description="Subscribe to channels to see their latest videos here."
         title="No subscriptions yet"
       />
     );
   }
 
   return (
-    <div className="space-y-8 text-white">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr),360px]">
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#181818]">
-          <div
-            className="min-h-[360px] bg-cover bg-center"
-            style={{
-              backgroundImage: featuredChannel?.latestVideo?.thumbnail?.url || featuredChannel?.latestVideo?.thumbnail
-                ? `linear-gradient(135deg, rgba(0,0,0,0.38), rgba(0,0,0,0.8)), url(${featuredChannel.latestVideo.thumbnail.url || featuredChannel.latestVideo.thumbnail})`
-                : "linear-gradient(135deg, #171717 0%, #251515 100%)",
-            }}
-          >
-            <div className="flex min-h-[360px] flex-col justify-end p-6 md:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">Subscriptions</p>
-              <h1 className="mt-3 max-w-3xl text-[2.1rem] font-semibold tracking-[-0.05em] text-white md:text-[2.8rem]">
-                Latest from the channels you follow
-              </h1>
-              {featuredChannel ? (
-                <div className="mt-5 flex flex-col gap-5 rounded-[24px] border border-white/10 bg-black/20 p-5 backdrop-blur-sm md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar
-                      className="h-14 w-14 rounded-full"
-                      name={featuredChannel.fullName || featuredChannel.username}
-                      src={featuredChannel.avatar}
-                    />
-                    <div>
-                      <p className="text-lg font-semibold text-white">{featuredChannel.fullName || featuredChannel.username}</p>
-                      <p className="text-sm text-white/55">@{featuredChannel.username}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 md:text-right">
-                    <p className="text-sm font-medium text-white">
-                      {featuredChannel.latestVideo?.title || "No recent public upload"}
-                    </p>
-                    <p className="text-xs text-white/45">
-                      {featuredChannel.latestVideo
-                        ? formatTimeAgo(featuredChannel.latestVideo.createdAt)
-                        : "Waiting for the next upload"}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
+    <div className="space-y-6 text-[#f1f1f1]">
+      {/* Channel avatars row */}
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+        {channels.map((ch) => (
+          <Link className="flex flex-shrink-0 flex-col items-center gap-2" key={ch._id} to={`/channel/${ch.username}`}>
+            <div className="relative">
+              <Avatar className="h-14 w-14 rounded-full" name={ch.fullName || ch.username} src={ch.avatar} />
+              {ch.latestVideo && (
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0f0f0f] bg-[#ff0000]" />
+              )}
             </div>
-          </div>
+            <span className="max-w-[60px] truncate text-center text-xs text-[#aaaaaa]">{ch.fullName || ch.username}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-[rgba(255,255,255,0.1)]">
+        <div className="flex gap-0">
+          {[
+            { id: "all", label: "All" },
+            { id: "today", label: "Today" },
+            { id: "channels", label: "Channels" },
+          ].map((tab) => (
+            <button
+              className={`border-b-2 px-6 py-3 text-sm font-medium transition ${activeTab === tab.id ? "border-[#f1f1f1] text-[#f1f1f1]" : "border-transparent text-[#aaaaaa] hover:text-[#f1f1f1]"}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              type="button"
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        <aside className="rounded-[28px] border border-white/10 bg-[#181818] p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Channels</p>
-          <div className="mt-5 space-y-3">
-            {channels.map((channel) => (
-              <Link
-                className="flex items-center gap-4 rounded-[20px] border border-white/10 bg-[#121212] px-4 py-4 transition hover:border-white/20 hover:bg-[#181818]"
-                key={channel._id}
-                to={`/channel/${channel.username}`}
-              >
-                <Avatar className="h-12 w-12 rounded-full" name={channel.fullName || channel.username} src={channel.avatar} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{channel.fullName || channel.username}</p>
-                  <p className="truncate text-xs text-white/42">
-                    {channel.latestVideo?.title || "No public upload yet"}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </aside>
-      </section>
-
-      <section className="space-y-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">Latest uploads</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Fresh from subscriptions</h2>
-          </div>
-          <p className="text-sm text-white/40">{formatCount(channels.length)} channels</p>
+      {/* Content */}
+      {activeTab === "channels" ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {channels.map((ch) => (
+            <Link
+              className="flex items-center gap-3 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] p-4 hover:bg-[#272727]"
+              key={ch._id}
+              to={`/channel/${ch.username}`}
+            >
+              <Avatar className="h-12 w-12 rounded-full" name={ch.fullName || ch.username} src={ch.avatar} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#f1f1f1]">{ch.fullName || ch.username}</p>
+                <p className="text-xs text-[#aaaaaa]">@{ch.username}</p>
+              </div>
+            </Link>
+          ))}
         </div>
-
-        <div className="grid gap-4">
-          {channelsWithUploads.map((channel) => {
-            const latestVideo = channel.latestVideo;
-            const thumbnail = latestVideo?.thumbnail?.url || latestVideo?.thumbnail;
-
-            return (
-              <article
-                className="grid gap-4 rounded-[24px] border border-white/10 bg-[#181818] p-4 lg:grid-cols-[260px,minmax(0,1fr),160px]"
-                key={channel._id}
-              >
-                <Link className="block overflow-hidden rounded-[18px] bg-black" to={`/watch/${latestVideo._id}`}>
-                  <div className="aspect-video">
-                    {thumbnail ? (
-                      <img alt={latestVideo.title} className="h-full w-full object-cover" src={thumbnail} />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-white/35">No thumbnail</div>
-                    )}
-                  </div>
-                </Link>
-
-                <div className="min-w-0">
-                  <Link className="line-clamp-2 text-xl font-semibold tracking-[-0.03em] text-white" to={`/watch/${latestVideo._id}`}>
-                    {latestVideo.title}
-                  </Link>
-                  <div className="mt-3 flex items-center gap-3">
-                    <Avatar className="h-10 w-10 rounded-full" name={channel.fullName || channel.username} src={channel.avatar} />
-                    <div className="min-w-0">
-                      <Link className="block truncate text-sm font-medium text-white/85" to={`/channel/${channel.username}`}>
-                        {channel.fullName || channel.username}
-                      </Link>
-                      <p className="text-xs text-white/42">@{channel.username}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col justify-between gap-3 lg:items-end">
-                  <p className="text-sm text-white/45">{formatTimeAgo(latestVideo.createdAt)}</p>
-                  <div className="flex gap-2 lg:flex-col lg:items-stretch">
-                    <Link className="gradient-button justify-center !px-4 !py-2 text-sm" to={`/watch/${latestVideo._id}`}>
-                      Watch
-                    </Link>
-                    <Link className="alt-button justify-center !px-4 !py-2 text-sm" to={`/channel/${channel.username}`}>
-                      Channel
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+      ) : latestVideos.length ? (
+        <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {latestVideos.map((video) => (
+            <VideoCard key={video._id} video={video} />
+          ))}
         </div>
-      </section>
+      ) : (
+        <EmptyState description="No recent uploads from your subscriptions." title="Nothing new" />
+      )}
     </div>
   );
 };
