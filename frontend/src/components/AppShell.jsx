@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Avatar from "./Avatar.jsx";
 import { apiRequest } from "../lib/api.js";
@@ -136,6 +136,20 @@ const AppShell = () => {
   const [subscriptionsBusy, setSubscriptionsBusy] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Mic / voice search state
+  const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState("");
+  const recognitionRef = useRef(null);
+
+  // Notification bell state
+  const [bellOpen, setBellOpen] = useState(false);
+  const bellRef = useRef(null);
+  const [notifications] = useState([
+    { id: 1, text: "Welcome to VideoTube! Upload your first video.", time: "Just now", read: false },
+    { id: 2, text: "Your account is set up and ready to go.", time: "1 hour ago", read: false },
+    { id: 3, text: "Explore trending videos on the feed.", time: "2 hours ago", read: true },
+  ]);
+
   const isStudioArea = pathname.startsWith("/studio") || pathname.startsWith("/upload");
   const isWatchPage = pathname.startsWith("/watch");
   const showSearch = !isStudioArea;
@@ -199,6 +213,61 @@ const AppShell = () => {
 
   const handleLogout = async () => { await logout(); navigate("/"); };
 
+  // Voice search
+  const handleMic = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMicError("Voice search is not supported in this browser.");
+      setTimeout(() => setMicError(""), 3000);
+      return;
+    }
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => setListening(true);
+    recognition.onend = () => setListening(false);
+    recognition.onerror = (event) => {
+      setListening(false);
+      if (event.error === "not-allowed") {
+        setMicError("Microphone access denied. Allow mic access in your browser settings.");
+      } else if (event.error === "no-speech") {
+        setMicError("No speech detected. Try again.");
+      } else {
+        setMicError("Voice search failed. Try again.");
+      }
+      setTimeout(() => setMicError(""), 4000);
+    };
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+      if (transcript) {
+        setSearchValue(transcript);
+        navigate(`/feed?q=${encodeURIComponent(transcript)}`);
+      }
+    };
+
+    recognition.start();
+  };
+
+  // Close bell on outside click
+  useEffect(() => {
+    if (!bellOpen) return;
+    const handler = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bellOpen]);
+
   const renderNavItem = (item, collapsed = false) => {
     const active = isActive(item);
     const IconComp = ICON_MAP[item.icon] || HomeIcon;
@@ -245,11 +314,11 @@ const AppShell = () => {
 
         {showSearch && (
           <form className="mx-auto hidden max-w-[640px] flex-1 items-center gap-2 md:flex" onSubmit={handleSearch}>
-            <div className="flex flex-1 overflow-hidden rounded-full border border-[#303030] bg-[#121212] focus-within:border-[#1c62b9]">
+            <div className={`flex flex-1 overflow-hidden rounded-full border bg-[#121212] focus-within:border-[#1c62b9] ${listening ? "border-[#ff0000]" : "border-[#303030]"}`}>
               <input
                 className="w-full bg-transparent px-4 py-2 text-sm text-[#f1f1f1] outline-none placeholder:text-[#aaaaaa]"
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search"
+                placeholder={listening ? "Listening..." : "Search"}
                 value={searchValue}
               />
               <button
@@ -259,7 +328,22 @@ const AppShell = () => {
                 <SearchIcon />
               </button>
             </div>
-            <button className="yt-icon-button" type="button"><MicIcon /></button>
+            <button
+              className={`yt-icon-button relative ${listening ? "text-[#ff0000]" : ""}`}
+              onClick={handleMic}
+              title={listening ? "Stop listening" : "Search by voice"}
+              type="button"
+            >
+              {listening ? (
+                <svg className="h-5 w-5 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 16a4 4 0 0 0 4-4V7a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4z" />
+                  <path d="M19 11a7 7 0 0 1-14 0" fill="none" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 18v3" fill="none" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              ) : (
+                <MicIcon />
+              )}
+            </button>
           </form>
         )}
 
@@ -273,7 +357,59 @@ const AppShell = () => {
                 <PlusIcon />
                 Create
               </Link>
-              <button className="yt-icon-button" type="button"><BellIcon /></button>
+
+              {/* Bell / Notifications */}
+              <div className="relative" ref={bellRef}>
+                <button
+                  className={`yt-icon-button relative ${bellOpen ? "bg-[#272727]" : ""}`}
+                  onClick={() => setBellOpen((v) => !v)}
+                  title="Notifications"
+                  type="button"
+                >
+                  <BellIcon />
+                  {notifications.some((n) => !n.read) && (
+                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#ff0000]" />
+                  )}
+                </button>
+
+                {bellOpen && (
+                  <div className="absolute right-0 top-12 z-50 w-[380px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#212121] shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.1)] px-4 py-3">
+                      <h3 className="text-sm font-medium text-[#f1f1f1]">Notifications</h3>
+                      <button className="text-xs text-[#3ea6ff] hover:underline" type="button">
+                        Mark all as read
+                      </button>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.map((n) => (
+                        <div
+                          className={`flex items-start gap-3 px-4 py-3 hover:bg-[#272727] ${!n.read ? "bg-[#272727]/40" : ""}`}
+                          key={n.id}
+                        >
+                          <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#ff0000]">
+                            <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-[#f1f1f1]">{n.text}</p>
+                            <p className="mt-0.5 text-xs text-[#aaaaaa]">{n.time}</p>
+                          </div>
+                          {!n.read && (
+                            <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#3ea6ff]" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-[rgba(255,255,255,0.1)] px-4 py-3 text-center">
+                      <button className="text-sm text-[#3ea6ff] hover:underline" type="button">
+                        See all notifications
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Link className="ml-1 rounded-full" to="/settings">
                 <Avatar className="h-8 w-8 rounded-full" name={user.fullName} src={user.avatar} />
               </Link>
